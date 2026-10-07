@@ -23,7 +23,8 @@ enyo.kind({
 					{name: "meta", className: "jf-detail-meta"},
 					{kind: "HFlexBox", className: "jf-detail-buttons", components: [
 						{name: "play", kind: "Button", caption: "Play", className: "enyo-button-affirmative",
-							onclick: "playClick", disabled: true}
+							onclick: "playClick", disabled: true},
+						{name: "shuffle", kind: "Button", caption: "Shuffle", onclick: "shuffleClick", disabled: true}
 					]},
 					{name: "message", className: "jf-message"},
 					{name: "tracks", className: "jf-tracks"}
@@ -38,11 +39,13 @@ enyo.kind({
 		this.tracks = [];
 		this.$.title.setContent(album.Name || "");
 		this.$.name.setContent(album.Name || "");
-		this.$.artist.setContent(album.AlbumArtist || (album.Artists || []).join(", ") || "");
+		this.$.artist.setContent(album.Type === "Playlist" ? "Playlist" :
+			album.AlbumArtist || (album.Artists || []).join(", ") || "");
 		this.$.meta.setContent(album.ProductionYear ? String(album.ProductionYear) : "");
 		var url = JF.api.imageUrl(album, 480);
 		this.$.art.applyStyle("background-image", url ? "url('" + url + "')" : "none");
 		this.$.play.setDisabled(true);
+		this.$.shuffle.setDisabled(true);
 		this.$.tracks.destroyControls();
 		this.$.tracks.render();
 		this.$.message.setContent("Loading…");
@@ -60,7 +63,9 @@ enyo.kind({
 	},
 
 	showTracks: function(tracks) {
-		this.tracks = tracks = this.inOrder(tracks);
+		// A playlist keeps its own order; an album goes by disc and track.
+		var playlist = this.album.Type === "Playlist";
+		this.tracks = tracks = playlist ? tracks : this.inOrder(tracks);
 		var discs = {};
 		var total = 0;
 		for (var i = 0; i < tracks.length; i++) {
@@ -70,7 +75,8 @@ enyo.kind({
 		var manyDiscs = Object.keys ? Object.keys(discs).length > 1 : false;
 		for (i = 0; i < tracks.length; i++) {
 			this.$.tracks.createComponent({kind: "JF.TrackRow", item: tracks[i], position: i,
-				showDisc: manyDiscs, albumArtist: this.album.AlbumArtist, onRowClick: "rowClick", owner: this});
+				showDisc: manyDiscs, albumArtist: this.album.AlbumArtist, numberByPosition: playlist,
+				onRowClick: "rowClick", owner: this});
 		}
 		this.$.tracks.render();
 		var meta = [];
@@ -84,6 +90,7 @@ enyo.kind({
 		this.$.meta.setContent(meta.join("  ·  "));
 		this.$.message.setContent(tracks.length ? "" : "No tracks.");
 		this.$.play.setDisabled(!tracks.length);
+		this.$.shuffle.setDisabled(tracks.length < 2);
 	},
 
 	// Files without track numbers come back sorted by name as text (1, 10, 11,
@@ -122,6 +129,17 @@ enyo.kind({
 		}
 	},
 
+	shuffleClick: function() {
+		var list = this.tracks.slice(0);
+		for (var i = list.length - 1; i > 0; i--) {
+			var j = Math.floor(Math.random() * (i + 1));
+			var t = list[i];
+			list[i] = list[j];
+			list[j] = t;
+		}
+		this.doPlayTracks(list, 0);
+	},
+
 	rowClick: function(inSender, position) {
 		this.doPlayTracks(this.tracks, position);
 	}
@@ -137,6 +155,7 @@ enyo.kind({
 		item: null,
 		position: 0,
 		showDisc: false,
+		numberByPosition: false,
 		albumArtist: ""
 	},
 	events: {
@@ -154,7 +173,7 @@ enyo.kind({
 	create: function() {
 		this.inherited(arguments);
 		var t = this.item;
-		var n = t.IndexNumber ? String(t.IndexNumber) : "";
+		var n = this.numberByPosition ? String(this.position + 1) : t.IndexNumber ? String(t.IndexNumber) : "";
 		if (this.showDisc && t.ParentIndexNumber) {
 			n = t.ParentIndexNumber + "-" + n;
 		}

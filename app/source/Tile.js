@@ -31,7 +31,7 @@ enyo.kind({
 		if (!item) {
 			return;
 		}
-		if (item.Type === "MusicAlbum" || item.Type === "Audio") {
+		if (/^(MusicAlbum|Audio|MusicArtist|MusicGenre|Playlist)$/.test(item.Type)) {
 			this.addClass("jf-tile-square");
 		}
 		var url = JF.api.imageUrl(item, 330);
@@ -72,7 +72,8 @@ enyo.kind({
 		if (item.Type === "MusicAlbum" || item.Type === "Audio") {
 			return item.AlbumArtist || (item.Artists || []).join(", ");
 		}
-		if (item.ProductionYear) {
+		// An artist's "year" is a birth or founding year; it means nothing on a tile.
+		if (item.ProductionYear && item.Type !== "MusicArtist" && item.Type !== "MusicGenre") {
 			return String(item.ProductionYear);
 		}
 		return "";

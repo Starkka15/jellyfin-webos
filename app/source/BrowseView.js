@@ -8,11 +8,16 @@ enyo.kind({
 		onBack: ""
 	},
 	pageSize: 60,
+	musicCategories: ["albums", "artists", "genres", "playlists"],
 	components: [
 		{kind: "PageHeader", className: "jf-header", components: [
 			{kind: "Button", caption: "Back", onclick: "doBack"},
 			{name: "title", content: "", flex: 1, className: "jf-header-title jf-header-indent"},
 			{name: "count", content: "", className: "jf-header-count"}
+		]},
+		// Only for the music library: what the grid shows.
+		{name: "tabs", kind: "RadioGroup", className: "jf-tabs", onChange: "tabChanged", showing: false, components: [
+			{caption: "Albums"}, {caption: "Artists"}, {caption: "Genres"}, {caption: "Playlists"}
 		]},
 		{name: "scroller", kind: "Scroller", flex: 1, components: [
 			{name: "message", className: "jf-message"},
@@ -25,6 +30,12 @@ enyo.kind({
 	// Show the children of this item, from the top.
 	open: function(parent) {
 		this.parentItem = parent;
+		var music = parent.CollectionType === "music";
+		this.$.tabs.setShowing(music);
+		if (music) {
+			parent.musicCategory = parent.musicCategory || "albums";
+			this.$.tabs.setValue(enyo.indexOf(parent.musicCategory, this.musicCategories));
+		}
 		this.loaded = 0;
 		this.total = 0;
 		this.$.title.setContent(this.titleFor(parent));
@@ -59,6 +70,9 @@ enyo.kind({
 			}
 			var items = data.Items || [];
 			for (var i = 0; i < items.length; i++) {
+				if (items[i].Type === "MusicGenre") {
+					items[i].musicLibraryId = parent.Id;  // a genre page lists this library's albums
+				}
 				self.$.grid.createComponent({kind: "JF.Tile", item: items[i], onTileClick: "tileClick", owner: self});
 			}
 			self.$.grid.render();
@@ -68,6 +82,14 @@ enyo.kind({
 			self.$.count.setContent(self.total ? self.loaded + " of " + self.total : "");
 			self.$.more.setShowing(items.length > 0 && self.loaded < self.total);
 		});
+	},
+
+	tabChanged: function() {
+		var category = this.musicCategories[this.$.tabs.getValue()];
+		if (this.parentItem && category !== this.parentItem.musicCategory) {
+			this.parentItem.musicCategory = category;
+			this.open(this.parentItem);
+		}
 	},
 
 	tileClick: function(inSender, item) {

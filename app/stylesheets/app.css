@@ -535,3 +535,8 @@ body {
 	font-size: 14px;
 	color: #5f6673;
 }
+
+/* Music library tabs: Albums, Artists, Genres, Playlists. */
+.jf-tabs {
+	margin: 12px 24px 0;
+}

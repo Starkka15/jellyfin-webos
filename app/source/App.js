@@ -80,6 +80,10 @@ enyo.kind({
 			JF.api.item(params.open, function(ok, item) {
 				if (ok && item) {
 					self.lastAction = 0;
+					// {open: "<music library id>", tab: "artists"} picks the music tab.
+					if (params.tab) {
+						item.musicCategory = params.tab;
+					}
 					self.openItem(self, item);
 					// {open: '<id>', options: true} also opens the download options.
 					if (params.options) {
@@ -174,7 +178,7 @@ enyo.kind({
 		if (this.tooSoon()) {
 			return;
 		}
-		var view = item.Type === "MusicAlbum" ? "album" : JF.api.isFolder(item) ? "browse" : "detail";
+		var view = item.Type === "MusicAlbum" || item.Type === "Playlist" ? "album" : JF.api.isFolder(item) ? "browse" : "detail";
 		this.stack.push({view: view, item: item});
 		this.showView(view, item);
 	},

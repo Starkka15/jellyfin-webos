@@ -318,6 +318,11 @@ JF.api = {
 
 	// The tracks of an album, in disc and track order. callback(ok, {Items: [...]})
 	albumTracks: function(album, callback) {
+		if (album.Type === "Playlist") {
+			// In the playlist's own order.
+			this.get("/Playlists/" + album.Id + "/Items", {userId: this.userId}, callback);
+			return;
+		}
 		this.get("/Items", {userId: this.userId, parentId: album.Id, includeItemTypes: "Audio", recursive: true,
 			sortBy: "ParentIndexNumber,IndexNumber,SortName", sortOrder: "Ascending"}, callback);
 	},
@@ -336,8 +341,43 @@ JF.api = {
 		};
 		if (parent.Type === "Search") {
 			this.get("/Items", {userId: this.userId, searchTerm: parent.term, recursive: true,
-				includeItemTypes: "Movie,Series,Episode,MusicAlbum,Audio", startIndex: startIndex, limit: limit,
+				includeItemTypes: "Movie,Series,Episode,MusicAlbum,MusicArtist,Playlist,Audio", startIndex: startIndex, limit: limit,
 				fields: "PrimaryImageAspectRatio"}, wrap);
+			return;
+		}
+		// The music library, by the tab chosen in BrowseView: albums (below),
+		// artists, genres or playlists.
+		if (parent.CollectionType === "music" && parent.musicCategory && parent.musicCategory !== "albums") {
+			var page = {userId: this.userId, startIndex: startIndex, limit: limit, sortBy: "SortName",
+				sortOrder: "Ascending", fields: "PrimaryImageAspectRatio"};
+			if (parent.musicCategory === "artists") {
+				page.parentId = parent.Id;
+				this.get("/Artists/AlbumArtists", page, wrap);
+			} else if (parent.musicCategory === "genres") {
+				page.parentId = parent.Id;
+				this.get("/Genres", page, wrap);
+			} else {
+				// Playlists live outside the music library; keep the ones made of music.
+				page.includeItemTypes = "Playlist";
+				page.mediaTypes = "Audio";
+				page.recursive = true;
+				this.get("/Items", page, wrap);
+			}
+			return;
+		}
+		if (parent.Type === "MusicArtist" || parent.Type === "MusicGenre") {
+			var albums = {userId: this.userId, includeItemTypes: "MusicAlbum", recursive: true,
+				startIndex: startIndex, limit: limit, fields: "PrimaryImageAspectRatio"};
+			if (parent.Type === "MusicArtist") {
+				albums.albumArtistIds = parent.Id;
+				albums.sortBy = "ProductionYear,SortName";
+				albums.sortOrder = "Descending,Ascending";
+			} else {
+				albums.genreIds = parent.Id;
+				albums.parentId = parent.musicLibraryId;
+				albums.sortBy = "SortName";
+			}
+			this.get("/Items", albums, wrap);
 			return;
 		}
 		if (parent.Type === "Series") {
@@ -511,7 +551,7 @@ JF.api = {
 	isFolder: function(item) {
 		return !!item.IsFolder || item.Type === "Series" || item.Type === "Season" ||
 			item.Type === "CollectionFolder" || item.Type === "BoxSet" || item.Type === "Folder" ||
-			item.Type === "UserView";
+			item.Type === "UserView" || item.Type === "MusicArtist" || item.Type === "MusicGenre";
 	},
 
 	// The audio and subtitle tracks to start with, from the languages last chosen
