@@ -39,10 +39,28 @@ The rest are stock webOS 3 features the app does not use yet.
 - [ ] **Exhibition mode.** On a Touchstone dock, show what is playing or a slideshow of
   library artwork. Stock webOS.
 
+## Music
+
+- [ ] **Shuffle.** A Shuffle button on every album and playlist, and shuffle on or off
+  for whatever is playing.
+- [ ] **Playlists.** Play the server's playlists; create new ones and add tracks or
+  whole albums to them from the tablet (saved on the server, so other Jellyfin
+  apps see them too).
+- [ ] **Browse by category.** Artists (today they are only reachable through search),
+  genres, and perhaps years, next to the album grid; an artist page with their albums.
+- [ ] **Downloads for music.** Download an album, playlist or track to play offline,
+  as for video; downloaded albums in the home screen's Downloads row.
+- [ ] **Player niceties:**
+  - [ ] Repeat: off, the whole list, or one track
+  - [ ] A queue you can see and change: Play Next, Add to Queue, remove, reorder
+  - [ ] A full Now Playing screen with large cover art, opened from the bar
+  - [ ] Favorite tracks and albums (Jellyfin's favorites), and a Favorites view
+  - [ ] Recently played and most played, from the server's history
+  - [ ] Instant Mix: the server's "more like this" playlist from a track, album or artist
+  - [ ] Remember the queue and position when the app is closed
+
 ## Missing features
 
-- [ ] Browse music by artist (today artists are only reachable through search)
-- [ ] Playlists
 - [ ] Collections
 - [ ] Live TV, for servers that have it
 
