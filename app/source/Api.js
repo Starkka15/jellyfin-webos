@@ -732,7 +732,13 @@ JF.api = {
 			DirectPlayProfiles: [
 				{Container: "mp3", Type: "Audio", AudioCodec: "mp3"},
 				{Container: "m4a,mp4,aac", Type: "Audio", AudioCodec: "aac"},
-				{Container: "wav", Type: "Audio"}
+				{Container: "wav", Type: "Audio"},
+				// webOS CE adds these decoders (GStreamer ogg, vorbis, opus and flac); tried
+				// over http and from local files, both play and seek. WMA has no decoder
+				// and is converted.
+				{Container: "ogg,oga", Type: "Audio", AudioCodec: "vorbis,opus"},
+				{Container: "opus", Type: "Audio", AudioCodec: "opus"},
+				{Container: "flac", Type: "Audio", AudioCodec: "flac"}
 			],
 			TranscodingProfiles: [
 				{Container: "mp3", Type: "Audio", AudioCodec: "mp3", Protocol: "http",

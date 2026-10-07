@@ -30,8 +30,9 @@ The rest are stock webOS 3 features the app does not use yet.
 
 ## Smaller wins
 
-- [ ] **Play Ogg and Opus music as-is.** CE can play them, so the server would not
-  need to convert those files, and they could be seeked within. (Matroska does not
+- [x] **Play Ogg, Opus and FLAC music as-is.** Done: CE's GStreamer decodes them, over http
+  and from downloads, with seeking, so the server sends the files unchanged. WMA has no
+  decoder and is still converted. (Matroska does not
   help video much: most MKV files are H.264 High profile, which the TouchPad's
   decoder cannot play whatever the container.)
 
@@ -52,9 +53,9 @@ The rest are stock webOS 3 features the app does not use yet.
   genres, and perhaps years, next to the album grid; an artist page with their albums.
 - [x] **Downloads for music.** Download an album, playlist or track to play offline,
   as for video; downloaded albums in the home screen's Downloads row.
-- [ ] **Player niceties:**
+- [x] **Player niceties:**
   - [x] Repeat: off, the whole list, or one track
-  - [x] A queue you can see and change: Play Next, Add to Queue, remove (reordering not yet)
+  - [x] A queue you can see and change: Play Next, Add to Queue, move up or down, remove
   - [x] A full Now Playing screen with large cover art, opened from the bar
   - [x] Favorite tracks and albums (Jellyfin's favorites), and a Favorite Songs list
   - [x] Recently played and most played, from the server's history

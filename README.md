@@ -20,7 +20,7 @@ A Jellyfin client for the HP TouchPad, written in Enyo 1 (the TouchPad's own fra
 - Music player that keeps playing while you browse, with a Now Playing bar, controls in the
   notification area, and Bluetooth and headset buttons
 - Music by album, artist, genre or playlist; shuffle and repeat; a Now Playing screen with an
-  editable queue; Play Next, Add to Queue, playlists, favorites, Instant Mix, and Recently and
+  queue you can reorder; Play Next, Add to Queue, playlists, favorites, Instant Mix, and Recently and
   Most Played lists
 - Playback progress, watched status and play counts reported to the server
 - Experimental phone layout (Pre3 and other webOS phones): smaller posters, stacked pages, a

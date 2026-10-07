@@ -1,6 +1,6 @@
 /* The full Now Playing screen, opened from the music bar: large cover art, the
  * controls, shuffle and repeat, and the queue ("Up Next"), where a track can be
- * played straight away or taken out. Everything here is a view of JF.music (the
+ * played straight away, moved or taken out. Everything here is a view of JF.music (the
  * NowPlaying bar), which owns the queue and the audio.
  */
 enyo.kind({
@@ -44,7 +44,9 @@ enyo.kind({
 					{name: "queue"}
 				]}
 			]}
-		]}
+		]},
+		// A row's "..." menu. Enyo 1 has no drag-to-reorder list, so tracks move a step at a time.
+		{name: "rowMenu", kind: "PopupSelect", onSelect: "rowMenuSelect"}
 	],
 
 	// Called by the App when the screen is shown.
@@ -94,7 +96,7 @@ enyo.kind({
 		this.$.queue.destroyControls();
 		for (var i = 0; i < queue.length; i++) {
 			this.$.queue.createComponent({kind: "JF.QueueRow", item: queue[i], position: i, current: i === m.index,
-				onRowClick: "rowClick", onRemove: "removeClick", owner: this});
+				onRowClick: "rowClick", onMore: "rowMore", owner: this});
 		}
 		this.$.queue.render();
 		this.$.count.setContent(queue.length ? (m.index + 1) + " of " + queue.length : "");
@@ -104,8 +106,39 @@ enyo.kind({
 		JF.music.jumpTo(position);
 	},
 
-	removeClick: function(inSender, position) {
-		JF.music.removeAt(position);
+	rowMore: function(inSender, position) {
+		var m = JF.music;
+		var last = (m.queue || []).length - 1;
+		var items = [];
+		// Play Next only makes sense for a track that is not playing and not already next.
+		if (position !== m.index && position !== m.index + 1) {
+			items.push({caption: "Play Next", value: "next"});
+		}
+		if (position > 0) {
+			items.push({caption: "Move Up", value: "up"});
+		}
+		if (position < last) {
+			items.push({caption: "Move Down", value: "down"});
+		}
+		items.push({caption: "Remove", value: "remove"});
+		this.menuPosition = position;
+		this.$.rowMenu.setItems(items);
+		this.$.rowMenu.openAroundControl(inSender.$.moreButton);
+	},
+
+	rowMenuSelect: function(inSender, inItem) {
+		var m = JF.music;
+		var p = this.menuPosition;
+		var action = inItem.getValue();
+		if (action === "next") {
+			m.moveTo(p, p < m.index ? m.index : m.index + 1);
+		} else if (action === "up") {
+			m.moveTo(p, p - 1);
+		} else if (action === "down") {
+			m.moveTo(p, p + 1);
+		} else if (action === "remove") {
+			m.removeAt(p);
+		}
 	},
 
 	previousClick: function() { JF.music.previousClick(); },
@@ -131,7 +164,7 @@ enyo.kind({
 	}
 });
 
-/* One line of the queue: tap to play it, Remove to take it out. */
+/* One line of the queue: tap to play it; "..." to move it or take it out. */
 enyo.kind({
 	name: "JF.QueueRow",
 	kind: enyo.HFlexBox,
@@ -144,7 +177,7 @@ enyo.kind({
 	},
 	events: {
 		onRowClick: "",
-		onRemove: ""
+		onMore: ""
 	},
 	components: [
 		{name: "number", className: "jf-track-number"},
@@ -153,7 +186,7 @@ enyo.kind({
 			{name: "artist", className: "jf-track-artist"}
 		]},
 		{name: "length", className: "jf-track-length"},
-		{kind: "Button", caption: "Remove", className: "jf-queue-remove", onclick: "removeClick"}
+		{name: "moreButton", kind: "Button", caption: "...", className: "jf-track-more", onclick: "moreClick"}
 	],
 
 	create: function() {
@@ -171,8 +204,8 @@ enyo.kind({
 		return true;
 	},
 
-	removeClick: function() {
-		this.doRemove(this.position);
+	moreClick: function() {
+		this.doMore(this.position);
 		return true;
 	}
 });

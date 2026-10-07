@@ -343,7 +343,8 @@ enyo.kind({
 		}
 		var m = /stream\.(\w+)/i.exec(info.url);
 		var type = m ? m[1].toLowerCase() : "mp3";
-		return "." + ({mp3: "mp3", m4a: "m4a", mp4: "m4a", aac: "m4a", wav: "wav"}[type] || "mp3");
+		return "." + ({mp3: "mp3", m4a: "m4a", mp4: "m4a", aac: "m4a", wav: "wav", ogg: "ogg", oga: "ogg",
+			opus: "opus", flac: "flac"}[type] || "mp3");
 	},
 
 	// The poster follows the video, never alongside another download: the download

@@ -164,6 +164,24 @@ enyo.kind({
 		this.notify("queue");
 	},
 
+	// Move the track at "from" to "to" in the play order. The track playing keeps playing.
+	moveTo: function(from, to) {
+		var q = this.queue;
+		if (!q || from === to || from < 0 || to < 0 || from >= q.length || to >= q.length) {
+			return;
+		}
+		var track = q.splice(from, 1)[0];
+		q.splice(to, 0, track);
+		if (from === this.index) {
+			this.index = to;
+		} else if (from < this.index && to >= this.index) {
+			this.index--;
+		} else if (from > this.index && to <= this.index) {
+			this.index++;
+		}
+		this.notify("queue");
+	},
+
 	jumpTo: function(i) {
 		this.playIndex(i, 0);
 	},
