@@ -520,3 +520,18 @@ body {
 	border-top: 9px solid transparent;
 	border-bottom: 9px solid transparent;
 }
+
+/* ---- servers found on the network (sign-in) ---------------------------- */
+
+.jf-login-note {
+	font-size: 15px;
+	color: #9aa0a6;
+	padding: 4px 6px 10px;
+}
+.jf-login-box .jf-found-name {
+	font-size: 18px;
+}
+.jf-login-box .jf-found-address {
+	font-size: 14px;
+	color: #5f6673;
+}

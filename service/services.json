@@ -1,6 +1,6 @@
 {
 	"id": "com.stark.jellyfin.service",
-	"description": "Relays https video streams for the Jellyfin app",
+	"description": "Relays https video streams and finds servers on the local network for the Jellyfin app",
 	"engine": "node",
 	"activityTimeout": 120,
 	"services": [
@@ -8,8 +8,21 @@
 			"name": "com.stark.jellyfin.service",
 			"globalized": false,
 			"commands": [
-				{ "name": "relay", "assistant": "relayAssistant", "public": true },
-				{ "name": "ping",  "assistant": "pingAssistant",  "public": true }
+				{
+					"name": "relay",
+					"assistant": "relayAssistant",
+					"public": true
+				},
+				{
+					"name": "ping",
+					"assistant": "pingAssistant",
+					"public": true
+				},
+				{
+					"name": "discover",
+					"assistant": "discoverAssistant",
+					"public": true
+				}
 			]
 		}
 	]

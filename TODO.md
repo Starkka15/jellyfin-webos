@@ -20,11 +20,13 @@ The rest are stock webOS 3 features the app does not use yet.
   the wired headset button (one click play/pause, two clicks next), and pausing
   music or video when headphones are unplugged.
 
-- [ ] **Easier server setup and sign-in.**
-  - [ ] Find Jellyfin servers on the local network (the relay service can listen for
-    them), as the official apps offer "servers found nearby".
-  - [ ] Jellyfin Quick Connect: sign in by entering a code shown on the TouchPad,
-    instead of typing a password on the on-screen keyboard.
+- [x] **Find servers on the local network.** Done (after 0.3.0): the sign-in screen
+  lists servers that answer Jellyfin's discovery (Auto Discovery must be on in the
+  server's Networking settings, the default). (Quick Connect was considered and
+  dropped: it needs a second device to approve the sign-in.)
+- [x] **Home or away.** Done (after 0.3.0): when the server signed in to over https
+  is also found on the home network, the app remembers its home address and uses
+  it whenever it answers (no relay, faster seeking), falling back to https when away.
 
 ## Smaller wins
 

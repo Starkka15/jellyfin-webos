@@ -14,7 +14,12 @@ JF.log = function(msg) {
 };
 
 JF.api = {
+	// The address in use right now: the server's home address when it answers
+	// (see chooseAddress), otherwise the one the user signed in with.
 	baseUrl: "",
+	signedInUrl: "",
+	homeUrl: "",
+	serverId: "",
 	userId: "",
 	userName: "",
 	token: "",
@@ -22,7 +27,10 @@ JF.api = {
 	// ---- session ----------------------------------------------------------
 
 	restore: function() {
-		this.baseUrl = localStorage.getItem("jf.url") || "";
+		this.signedInUrl = localStorage.getItem("jf.url") || "";
+		this.baseUrl = this.signedInUrl;
+		this.homeUrl = localStorage.getItem("jf.homeUrl") || "";
+		this.serverId = localStorage.getItem("jf.serverId") || "";
 		this.userId = localStorage.getItem("jf.userId") || "";
 		this.userName = localStorage.getItem("jf.userName") || "";
 		this.token = localStorage.getItem("jf.token") || "";
@@ -30,7 +38,9 @@ JF.api = {
 	},
 
 	save: function() {
-		localStorage.setItem("jf.url", this.baseUrl);
+		localStorage.setItem("jf.url", this.signedInUrl);
+		localStorage.setItem("jf.homeUrl", this.homeUrl);
+		localStorage.setItem("jf.serverId", this.serverId);
 		localStorage.setItem("jf.userId", this.userId);
 		localStorage.setItem("jf.userName", this.userName);
 		localStorage.setItem("jf.token", this.token);
@@ -41,6 +51,104 @@ JF.api = {
 		this.token = "";
 		localStorage.removeItem("jf.userId");
 		localStorage.removeItem("jf.token");
+	},
+
+	// ---- home or away --------------------------------------------------------
+	// A server reachable at home over plain http and from outside over https is
+	// faster at home: no relay, quicker seeking. Discovery (Relay.discover) only
+	// answers on the home network and gives the server's id with its LAN address,
+	// so remember that address, and at start-up use it if it answers as the same
+	// server. (The server's own LocalAddress is not to be trusted: one seen in
+	// testing reported a dummy interface's address to callers from outside.)
+
+	// callback() once baseUrl is set.
+	chooseAddress: function(callback) {
+		var self = this;
+		this.lastChoice = new Date().getTime();
+		if (!this.homeUrl || this.homeUrl === this.signedInUrl) {
+			this.baseUrl = this.signedInUrl;
+			callback();
+			this.learnHomeAddress();
+			return;
+		}
+		this.probe(this.homeUrl, function(ok) {
+			self.baseUrl = ok ? self.homeUrl : self.signedInUrl;
+			JF.log("using " + (ok ? "the home address " : "the signed-in address ") + self.baseUrl);
+			callback();
+			if (!ok) {
+				self.learnHomeAddress();
+			}
+		});
+	},
+
+	// Does this address answer, quickly, as our server? callback(ok)
+	probe: function(url, callback) {
+		var self = this;
+		var req = new XMLHttpRequest();
+		var done = false;
+		var finish = function(ok) {
+			if (!done) {
+				done = true;
+				clearTimeout(timer);
+				callback(ok);
+			}
+		};
+		var timer = setTimeout(function() {
+			try { req.abort(); } catch (e) {}
+			finish(false);
+		}, 2000);
+		req.open("GET", url + "/System/Info/Public", true);
+		req.onreadystatechange = function() {
+			if (req.readyState === 4) {
+				var info = null;
+				try { info = JSON.parse(req.responseText); } catch (e) {}
+				finish(req.status === 200 && !!info && (!self.serverId || info.Id === self.serverId));
+			}
+		};
+		req.send(null);
+	},
+
+	// Ask the local network who answers; if our server does, remember its address
+	// and move to it.
+	learnHomeAddress: function() {
+		var self = this;
+		if (!JF.relay || !this.token) {
+			return;
+		}
+		var withId = function() {
+			JF.relay.discover(function(servers) {
+				for (var i = 0; i < servers.length; i++) {
+					if (servers[i].id === self.serverId && servers[i].address) {
+						if (servers[i].address !== self.homeUrl) {
+							JF.log("home address learned: " + servers[i].address);
+						}
+						self.homeUrl = servers[i].address;
+						self.save();
+						if (self.baseUrl !== self.homeUrl) {
+							self.probe(self.homeUrl, function(ok) {
+								if (ok) {
+									self.baseUrl = self.homeUrl;
+									JF.log("switched to the home address " + self.baseUrl);
+								}
+							});
+						}
+						return;
+					}
+				}
+			});
+		};
+		if (this.serverId) {
+			withId();
+			return;
+		}
+		// Signed in before this was added: learn which server this is first.
+		this.get(this.signedInUrl + "/System/Info/Public", null, function(ok, info) {
+			if (ok && info && info.Id) {
+				self.serverId = info.Id;
+				self.save();
+				withId();
+			}
+		});
 	},
 
 	deviceId: function() {
@@ -148,6 +256,11 @@ JF.api = {
 			self.request("POST", url + "/Users/AuthenticateByName", null, {Username: user, Pw: password},
 				function(ok2, data, status2) {
 					if (ok2 && data && data.AccessToken && data.User) {
+						if (info.Id !== self.serverId) {
+							self.homeUrl = "";  // a different server: forget the old one's home address
+						}
+						self.serverId = info.Id || "";
+						self.signedInUrl = url;
 						self.baseUrl = url;
 						self.token = data.AccessToken;
 						self.userId = data.User.Id;

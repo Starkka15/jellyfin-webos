@@ -45,10 +45,15 @@ enyo.kind({
 			}
 			if (JF.api.restore()) {
 				this.$.downloads.restore();
-				this.showHome();
-				this.testLaunch(enyo.windowParams || {});
+				var self = this;
+				// Home address or signed-in address, whichever answers (see chooseAddress).
+				JF.api.chooseAddress(function() {
+					self.showHome();
+					self.testLaunch(enyo.windowParams || {});
+				});
 			} else {
 				this.$.pane.selectViewByName("login");
+				this.$.login.searchServers();
 			}
 		}
 	},
@@ -61,6 +66,12 @@ enyo.kind({
 	// Test playback does not report to the server, so it leaves the watch history alone.
 	testLaunch: function(params) {
 		var self = this;
+		// {showLogin: true} shows the sign-in screen (and its server search) without signing out.
+		if (params.showLogin) {
+			this.$.pane.selectViewByName("login");
+			this.$.login.searchServers();
+			return;
+		}
 		if (params.search) {
 			this.search(this, params.search);
 			return;
@@ -133,6 +144,7 @@ enyo.kind({
 		JF.api.signOut();
 		this.stack = [];
 		this.$.pane.selectViewByName("login");
+		this.$.login.searchServers();
 	},
 
 	showHome: function() {
@@ -228,6 +240,10 @@ enyo.kind({
 	// The music controls go in the notification area while the app is in the background.
 	windowActivated: function() {
 		this.$.nowPlaying.appInBackground(false);
+		// Coming back may mean coming home, or leaving: check which address answers.
+		if (JF.api.token && new Date().getTime() - (JF.api.lastChoice || 0) > 60000) {
+			JF.api.chooseAddress(function() {});
+		}
 	},
 
 	windowDeactivated: function() {

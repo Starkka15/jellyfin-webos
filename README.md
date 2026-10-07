@@ -4,7 +4,8 @@ A Jellyfin client for the HP TouchPad, written in Enyo 1 (the TouchPad's own fra
 
 ## Features
 
-- Sign in to any Jellyfin server, over `http` or `https`
+- Sign in to any Jellyfin server, over `http` or `https`; servers on your network are listed
+- Uses the server's home address when you are home and its `https` address when you are out
 - Home screen with Continue Watching, Next Up, Latest and your libraries
 - Browse movies, shows (series → seasons → episodes) and music (albums)
 - Search across movies, shows, episodes, albums and tracks
@@ -56,6 +57,14 @@ A few things the TouchPad needs, found the hard way:
   app hands the stream to its bundled service (`service/relay.js`), which fetches it with CE's
   modern `curl` and passes it to the player at a local `http://127.0.0.1` address. Only addresses
   the app registers are relayed. Plain `http` addresses go straight to the player.
+
+## Finding the server at home
+
+The sign-in screen lists Jellyfin servers on your network, and if you signed in with an
+ address, the app learns the same server's home address and switches to it
+whenever it answers. Both rely on Jellyfin's discovery, which is on by default
+(Dashboard → Networking → Enable Auto Discovery). webOS's firewall drops replies to a
+broadcast, so the bundled service also asks each address on the local network directly.
 
 ## Layout
 

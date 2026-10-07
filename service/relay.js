@@ -21,6 +21,7 @@ if (typeof require === "undefined") {
 
 var http = require("http");
 var child_process = require("child_process");
+var dgram = require("dgram");
 
 var CURL = "/usr/bin/curl";
 var MAX_ROUTES = 8;
@@ -198,5 +199,106 @@ relayAssistant.prototype.run = function(future) {
 var pingAssistant = function() {};
 pingAssistant.prototype.run = function(future) {
 	future.result = {returnValue: true, port: port};
+	return future;
+};
+
+// Every address on the local networks the tablet is on: callback([ip]).
+// Read from the kernel's routing table, whose network and mask columns are
+// little-endian hex (0004A8C0 / 00FCFFFF is 192.168.4.0 / 255.255.252.0).
+function localHosts(callback) {
+	var hosts = [];
+	var table = "";
+	try {
+		table = require("fs").readFileSync("/proc/net/route", "utf8");
+	} catch (e) {
+		log("discover: no routing table: " + e);
+	}
+	var hex = function(h) {
+		var n = parseInt(h, 16);
+		return (((n & 255) << 24) >>> 0) + (((n >>> 8) & 255) << 16) + (((n >>> 16) & 255) << 8) + ((n >>> 24) & 255);
+	};
+	var toIp = function(n) {
+		return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join(".");
+	};
+	var lines = table.split("\n");
+	for (var l = 1; l < lines.length; l++) {
+		var f = lines[l].split(/\s+/);
+		if (f.length < 8 || f[0] === "lo" || f[1] === "00000000") {
+			continue;  // the loopback, and the default route
+		}
+		var net = hex(f[1]);
+		var mask = hex(f[7]);
+		// Keep it to a home-sized network: anything larger than a /22 is skipped.
+		if (((~mask) >>> 0) > 1023) {
+			continue;
+		}
+		var size = ((~mask) >>> 0) + 1;
+		for (var i = 1; i < size - 1; i++) {
+			hosts.push(toIp(net + i));
+		}
+	}
+	log("discover: asking " + hosts.length + " local address(es)");
+	callback(hosts);
+}
+
+// ---- luna command: discover -------------------------------------------------
+// Jellyfin servers on the local network answer a UDP broadcast of
+// "who is JellyfinServer?" on port 7359 with {Address, Id, Name}, when their
+// Auto Discovery setting is on (the default). The official apps find servers
+// this way; a web app cannot use UDP, so the service asks on its behalf.
+//
+// webOS's firewall drops incoming packets that are not part of a conversation
+// the tablet started, and a reply to a broadcast comes from an address the
+// tablet never sent to, so it is dropped (seen as IPT_PACKET_DROPPED_NO_MATCH
+// with SPT=7359). A reply from an address the tablet did ask is let in, so the
+// question also goes to every address on the local subnet (at most 1024,
+// a few milliseconds of tiny packets). node 0.4 cannot list interfaces and the
+// service jail has no ifconfig, so the networks come from /proc/net/route.
+// -> {returnValue: true, servers: [{name, address, id}]}
+var discoverAssistant = function() {};
+discoverAssistant.prototype.run = function(future) {
+	var found = {};
+	var list = [];
+	var socket;
+	var finished = false;
+	function finish() {
+		if (finished) {
+			return;
+		}
+		finished = true;
+		try { socket.close(); } catch (e) {}
+		log("discover: " + list.length + " server(s)");
+		future.result = {returnValue: true, servers: list};
+	}
+	try {
+		socket = dgram.createSocket("udp4");
+		socket.on("message", function(msg) {
+			try {
+				var r = JSON.parse(msg.toString());
+				if (r.Address && !found[r.Id || r.Address]) {
+					found[r.Id || r.Address] = true;
+					list.push({name: r.Name || "", address: r.Address, id: r.Id || ""});
+				}
+			} catch (e) {}
+		});
+		socket.on("error", function(e) {
+			log("discover error: " + e);
+			finish();
+		});
+		socket.bind(0);
+		socket.setBroadcast(true);
+		var msg = new Buffer("who is JellyfinServer?");
+		socket.send(msg, 0, msg.length, 7359, "255.255.255.255");
+		localHosts(function(hosts) {
+			for (var i = 0; i < hosts.length && !finished; i++) {
+				socket.send(msg, 0, msg.length, 7359, hosts[i]);
+			}
+			setTimeout(finish, 2500);
+		});
+	} catch (e) {
+		log("discover failed: " + e);
+		finished = true;
+		future.result = {returnValue: true, servers: []};
+	}
 	return future;
 };

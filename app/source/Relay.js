@@ -1,4 +1,5 @@
-/* Hands https stream addresses to our relay service (com.stark.jellyfin.service).
+/* Talks to our service (com.stark.jellyfin.service): hands it https stream
+ * addresses to relay, and asks it to find servers on the local network.
  * The TouchPad's media player cannot reach a modern https server; the service
  * fetches the stream with webOS CE's curl and gives back a local http address.
  * Plain http addresses are played as they are. The App owns one of these and
@@ -10,7 +11,9 @@ enyo.kind({
 	components: [
 		{name: "relaySvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/", method: "relay",
 			onResponse: "relayResponse"},
-		{name: "pingSvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/", method: "ping"}
+		{name: "pingSvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/", method: "ping"},
+		{name: "discoverSvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/", method: "discover",
+			onResponse: "discovered"}
 	],
 
 	needed: function(url) {
@@ -40,6 +43,25 @@ enyo.kind({
 		} else {
 			JF.log("relay failed: " + enyo.json.stringify(inResponse));
 			callback(null);
+		}
+	},
+
+	// Jellyfin servers on the local network: callback([{name, address, id}]).
+	// A web app cannot send UDP, so the service does it.
+	discover: function(callback) {
+		if (!window.PalmSystem) {
+			callback([]);
+			return;
+		}
+		this.discoverCallback = callback;
+		this.$.discoverSvc.call({});
+	},
+
+	discovered: function(inSender, inResponse) {
+		var callback = this.discoverCallback;
+		this.discoverCallback = null;
+		if (callback) {
+			callback((inResponse && inResponse.servers) || []);
 		}
 	},
 
