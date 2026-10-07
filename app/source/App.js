@@ -4,7 +4,15 @@ enyo.kind({
 	kind: enyo.VFlexBox,
 	className: "jf-app",
 	components: [
-		{kind: "ApplicationEvents", onBack: "backGesture", onUnload: "unload"},
+		{kind: "ApplicationEvents", onBack: "backGesture", onUnload: "unload",
+			onWindowActivated: "windowActivated", onWindowDeactivated: "windowDeactivated",
+			onWindowParamsChange: "windowParamsChanged"},
+		// Bluetooth (AVRCP) media buttons, and the wired headset's button and plug,
+		// as HP's Music app listens to them.
+		{name: "mediaKeys", kind: "PalmService", service: "palm://com.palm.keys/media/", method: "status",
+			subscribe: true, onSuccess: "mediaKey"},
+		{name: "headsetKeys", kind: "PalmService", service: "palm://com.palm.keys/headset/", method: "status",
+			subscribe: true, onSuccess: "headsetKey"},
 		{name: "pane", kind: "Pane", flex: 1, transitionKind: "enyo.transitions.Simple", components: [
 			{name: "login", kind: "JF.LoginView", onSignedIn: "signedIn"},
 			{name: "home", kind: "JF.HomeView", onOpen: "openItem", onSearch: "search", onSignOut: "signOut"},
@@ -31,6 +39,10 @@ enyo.kind({
 		this.inherited(arguments);
 		if (!this.started) {
 			this.started = true;
+			if (window.PalmSystem) {
+				this.$.mediaKeys.call({});
+				this.$.headsetKeys.call({});
+			}
 			if (JF.api.restore()) {
 				this.$.downloads.restore();
 				this.showHome();
@@ -208,6 +220,67 @@ enyo.kind({
 				inEvent.stopPropagation && inEvent.stopPropagation();
 			}
 			return true;
+		}
+	},
+
+	// ---- control from outside the app ---------------------------------------
+
+	// The music controls go in the notification area while the app is in the background.
+	windowActivated: function() {
+		this.$.nowPlaying.appInBackground(false);
+	},
+
+	windowDeactivated: function() {
+		this.$.nowPlaying.appInBackground(true);
+	},
+
+	// The dashboard's buttons arrive as window params.
+	windowParamsChanged: function() {
+		var p = enyo.windowParams || {};
+		if (p.musicCommand) {
+			this.$.nowPlaying.command(p.musicCommand);
+		}
+	},
+
+	videoPlaying: function() {
+		return this.$.pane.getViewName() === "player" && this.$.player.playing;
+	},
+
+	// Bluetooth buttons: keys play, pause, togglePausePlay, next, prev, stop.
+	mediaKey: function(inSender, r) {
+		if (!r || r.state !== "down") {
+			return;
+		}
+		JF.log("media key " + r.key);
+		var names = {play: "play", pause: "pause", stop: "pause", togglePausePlay: "playpause",
+			next: "next", prev: "previous"};
+		var name = names[r.key];
+		if (!name) {
+			return;
+		}
+		if (this.videoPlaying()) {
+			if (name === "pause" || name === "playpause" || name === "play") {
+				if (name !== "play" || this.$.player.paused) {
+					this.$.player.pauseClick();
+				}
+			}
+			return;
+		}
+		this.$.nowPlaying.command(name);
+	},
+
+	// The wired headset: one click play/pause, two clicks next; unplugging pauses.
+	headsetKey: function(inSender, r) {
+		if (!r) {
+			return;
+		}
+		JF.log("headset " + r.key + " " + r.state);
+		if (r.key === "headset" && r.state === "up") {
+			this.$.player.pauseVideo();
+			this.$.nowPlaying.command("pause");
+		} else if (r.key === "headset_button") {
+			this.mediaKey(this, {state: "down",
+				key: r.state === "double_click" ? "next" : r.state === "single_click" ? "togglePausePlay" : ""});
 		}
 	},
 

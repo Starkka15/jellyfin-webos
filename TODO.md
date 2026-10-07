@@ -14,10 +14,11 @@ The rest are stock webOS 3 features the app does not use yet.
   - [ ] Report progress watched offline to the server when back online
   - [ ] Warn before a download that would not fit in the free space
 
-- [ ] **Music controls outside the app.** A small dashboard (notification) window with
-  pause and skip, so music can be controlled while another app is open. Include
-  Bluetooth headset buttons, and pause when headphones are unplugged, as HP's own
-  player does. Stock webOS.
+- [x] **Music controls outside the app.** Done (after 0.3.0), following HP's Music app:
+  a dashboard in the notification area while music plays in the background
+  (previous, play/pause, next; tap the title to return), Bluetooth (AVRCP) buttons,
+  the wired headset button (one click play/pause, two clicks next), and pausing
+  music or video when headphones are unplugged.
 
 - [ ] **Easier server setup and sign-in.**
   - [ ] Find Jellyfin servers on the local network (the relay service can listen for

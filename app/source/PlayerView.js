@@ -361,6 +361,13 @@ enyo.kind({
 		this.showControls();
 	},
 
+	// Headphones unplugged: pause rather than play out loud.
+	pauseVideo: function() {
+		if (this.playing && !this.paused) {
+			this.pauseClick();
+		}
+	},
+
 	seekTo: function(ticks) {
 		var node = this.$.video.hasNode();
 		if (!node || !this.playing) {

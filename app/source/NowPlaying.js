@@ -64,6 +64,7 @@ enyo.kind({
 		this.$.artist.setContent(track.AlbumArtist || (track.Artists || []).join(", ") || track.Album || "");
 		var url = JF.api.imageUrl(track, 120);
 		this.$.art.applyStyle("background-image", url ? "url('" + url + "')" : "none");
+		this.updateDashboard();
 		this.startStream(startTicks || 0);
 	},
 
@@ -138,6 +139,7 @@ enyo.kind({
 			try { node.load(); } catch (e) {}
 		}
 		this.queue = null;
+		this.closeDashboard();
 		this.setShowing(false);
 	},
 
@@ -274,6 +276,77 @@ enyo.kind({
 		this.endTrack();
 		this.$.artist.setContent(text);
 		this.$.pauseButton.setCaption("Play");
+		this.updateDashboard();
+	},
+
+	// ---- control from outside the app ---------------------------------------
+	// HP's Music app shows its controls in the notification area while it is in
+	// the background, and takes Bluetooth and headset buttons; so does this.
+
+	// Called by the App as its window goes to the background and comes back.
+	appInBackground: function(background) {
+		this.background = background;
+		if (background && this.queue) {
+			this.openDashboard();
+		} else {
+			this.closeDashboard();
+		}
+	},
+
+	dashboardInfo: function() {
+		var track = this.item || {};
+		return {
+			title: track.Name || "",
+			artist: track.AlbumArtist || (track.Artists || []).join(", ") || track.Album || "",
+			image: JF.api.imageUrl(track, 120) || "",
+			playing: !!(this.playing && !this.paused)
+		};
+	},
+
+	openDashboard: function() {
+		if (!this.dashboard) {
+			JF.log("music: opening the dashboard");
+			this.dashboard = enyo.windows.openDashboard("dashboard.html", "jfmusic", this.dashboardInfo(),
+				{clickableWhenLocked: true});
+		}
+	},
+
+	closeDashboard: function() {
+		if (this.dashboard) {
+			JF.log("music: closing the dashboard");
+			try { this.dashboard.close(); } catch (e) {}
+			this.dashboard = null;
+		}
+	},
+
+	updateDashboard: function() {
+		var win = this.dashboard && enyo.windows.fetchWindow("jfmusic");
+		if (win) {
+			enyo.windows.setWindowParams(win, this.dashboardInfo());
+		}
+	},
+
+	// From the dashboard, or a Bluetooth or headset button.
+	command: function(name) {
+		if (!this.queue) {
+			return false;
+		}
+		if (name === "previous") {
+			this.previousClick();
+		} else if (name === "next") {
+			this.nextClick();
+		} else if (name === "playpause") {
+			this.pauseClick();
+		} else if (name === "pause") {
+			if (this.playing && !this.paused) {
+				this.pauseClick();
+			}
+		} else if (name === "play") {
+			if (!this.playing || this.paused) {
+				this.pauseClick();  // also retries a track that failed
+			}
+		}
+		return true;
 	},
 
 	// ---- what the audio element tells us ---------------------------------
@@ -285,9 +358,11 @@ enyo.kind({
 		if (e.type === "playing") {
 			this.paused = false;
 			this.$.pauseButton.setCaption("Pause");
+			this.updateDashboard();
 		} else if (e.type === "pause") {
 			this.paused = true;
 			this.$.pauseButton.setCaption("Play");
+			this.updateDashboard();
 			this.tellServer("/Sessions/Playing/Progress");
 		} else if (e.type === "ended") {
 			this.playIndex(this.index + 1, 0);

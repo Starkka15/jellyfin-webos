@@ -424,3 +424,99 @@ body {
 .enyo-popup .enyo-item {
 	color: #2b2f36;
 }
+
+/* ---- music dashboard (dashboard.html) ----------------------------------- */
+
+.jf-dashboard-body {
+	background: #000000;
+}
+.jf-dashboard {
+	height: 52px;
+	padding: 0 6px;
+	color: #ffffff;
+}
+.jf-dash-art {
+	width: 40px;
+	height: 40px;
+	background-color: #2a3142;
+	background-position: center center;
+	-webkit-background-size: cover;
+	background-size: cover;
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
+}
+.jf-dash-text {
+	padding: 0 10px;
+	overflow: hidden;
+}
+.jf-dash-title,
+.jf-dash-artist {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.jf-dash-title {
+	font-size: 16px;
+}
+.jf-dash-artist {
+	font-size: 13px;
+	color: #a0a7b4;
+}
+/* Media symbols drawn with borders: the TouchPad font has none. */
+.jf-dash-button {
+	position: relative;
+	width: 42px;
+	height: 44px;
+}
+.jf-dash-button:active {
+	background: #2a3142;
+	-webkit-border-radius: 6px;
+	border-radius: 6px;
+}
+.jf-dash-button:before,
+.jf-dash-button:after {
+	content: "";
+	position: absolute;
+}
+.jf-dash-play:after {
+	left: 16px;
+	top: 13px;
+	border-left: 14px solid #ffffff;
+	border-top: 9px solid transparent;
+	border-bottom: 9px solid transparent;
+}
+.jf-dash-play.jf-dash-pause:after {
+	left: 15px;
+	top: 13px;
+	width: 4px;
+	height: 18px;
+	border: solid #ffffff;
+	border-width: 0 4px;
+}
+.jf-dash-prev:before,
+.jf-dash-next:before {
+	top: 13px;
+	width: 3px;
+	height: 18px;
+	background: #ffffff;
+}
+.jf-dash-prev:before {
+	left: 13px;
+}
+.jf-dash-prev:after {
+	left: 16px;
+	top: 13px;
+	border-right: 12px solid #ffffff;
+	border-top: 9px solid transparent;
+	border-bottom: 9px solid transparent;
+}
+.jf-dash-next:before {
+	left: 26px;
+}
+.jf-dash-next:after {
+	left: 14px;
+	top: 13px;
+	border-left: 12px solid #ffffff;
+	border-top: 9px solid transparent;
+	border-bottom: 9px solid transparent;
+}
