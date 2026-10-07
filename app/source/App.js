@@ -6,7 +6,7 @@ enyo.kind({
 	components: [
 		{kind: "ApplicationEvents", onBack: "backGesture", onUnload: "unload",
 			onWindowActivated: "windowActivated", onWindowDeactivated: "windowDeactivated",
-			onWindowParamsChange: "windowParamsChanged"},
+			onWindowParamsChange: "windowParamsChanged", onApplicationRelaunch: "relaunched"},
 		// Bluetooth (AVRCP) media buttons, and the wired headset's button and plug,
 		// as HP's Music app listens to them.
 		{name: "mediaKeys", kind: "PalmService", service: "palm://com.palm.keys/media/", method: "status",
@@ -409,6 +409,16 @@ enyo.kind({
 	},
 
 	// The dashboard's buttons arrive as window params.
+	// Put on a Touchstone dock while the app is open: show the exhibition in a
+	// window of its own (Exhibition.js), and leave this card as it is.
+	relaunched: function() {
+		var p = enyo.windowParams || {};
+		if (p.dockMode || p.windowType === "dockModeWindow") {
+			enyo.windows.activate("index.html", "jfExhibition", {dockMode: true}, {window: "dockmode"});
+			return true;
+		}
+	},
+
 	windowParamsChanged: function() {
 		var p = enyo.windowParams || {};
 		if (JF.api.token) {

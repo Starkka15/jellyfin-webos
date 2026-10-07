@@ -23,6 +23,8 @@ A Jellyfin client for the HP TouchPad, written in Enyo 1 (the TouchPad's own fra
 - Music by album, artist, genre or playlist; shuffle and repeat; a Now Playing screen with an
   queue you can reorder; Play Next, Add to Queue, playlists, favorites, Instant Mix, and Recently and
   Most Played lists
+- Exhibition mode on a Touchstone dock: what is playing, with its controls, or a slideshow of
+  your movie and show artwork with a clock (pick Jellyfin in Exhibition's menu)
 - Playback progress, watched status and play counts reported to the server
 - Experimental phone layout (Pre3 and other webOS phones): smaller posters, stacked pages, a
   slimmer header and music bar, and Refresh and Sign Out in the app menu

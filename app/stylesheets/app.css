@@ -902,3 +902,136 @@ body {
 .jf-phone .enyo-modaldialog {
 	width: 264px;
 }
+
+/* ---- Exhibition (Touchstone dock) --------------------------------------- */
+
+.jf-exhibit {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	background: #000000;
+	overflow: hidden;
+	color: #ffffff;
+}
+.jf-exhibit-slide {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	background-position: center center;
+	background-repeat: no-repeat;
+	-webkit-background-size: cover;
+	background-size: cover;
+	opacity: 0;
+	-webkit-transition: opacity 2s ease-in-out;
+}
+.jf-exhibit-slide.jf-exhibit-front {
+	opacity: 1;
+}
+/* Behind the music, the cover is a dim backdrop. */
+.jf-exhibit-slide.jf-exhibit-front.jf-exhibit-dim {
+	opacity: 0.25;
+}
+.jf-exhibit-caption {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	padding: 60px 32px 24px;
+	background: -webkit-gradient(linear, left top, left bottom, from(rgba(0, 0, 0, 0)), to(rgba(0, 0, 0, 0.75)));
+}
+.jf-exhibit-title {
+	font-size: 30px;
+	font-weight: bold;
+	text-shadow: 0 0 6px #000000;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.jf-exhibit-sub {
+	font-size: 20px;
+	color: #d0d4dc;
+	text-shadow: 0 0 6px #000000;
+	margin-top: 4px;
+}
+.jf-exhibit-clock {
+	position: absolute;
+	right: 32px;
+	bottom: 24px;
+	font-size: 44px;
+	text-shadow: 0 0 8px #000000;
+}
+.jf-exhibit-music {
+	position: absolute;
+	left: 40px;
+	right: 40px;
+	top: 50%;
+	margin-top: -170px;
+	height: 340px;
+}
+.jf-exhibit-art {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 340px;
+	height: 340px;
+	background-color: #2a3142;
+	background-position: center center;
+	-webkit-background-size: cover;
+	background-size: cover;
+	-webkit-border-radius: 8px;
+	border-radius: 8px;
+	-webkit-box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+}
+.jf-exhibit-track {
+	position: absolute;
+	left: 380px;
+	right: 0;
+	top: 40px;
+}
+.jf-exhibit-bar {
+	height: 6px;
+	margin: 24px 0 8px;
+	background: rgba(255, 255, 255, 0.25);
+	-webkit-border-radius: 3px;
+	border-radius: 3px;
+}
+.jf-exhibit-bar-fill {
+	height: 6px;
+	width: 0;
+	background: #00a4dc;
+	-webkit-border-radius: 3px;
+	border-radius: 3px;
+}
+.jf-exhibit-buttons {
+	margin-top: 24px;
+}
+.jf-exhibit-buttons .enyo-button {
+	margin-right: 10px;
+	min-width: 90px;
+}
+/* Upright: the cover above the track. */
+@media (orientation: portrait) {
+	.jf-exhibit-music {
+		top: 80px;
+		margin-top: 0;
+		height: auto;
+	}
+	.jf-exhibit-art {
+		position: relative;
+		margin: 0 auto;
+	}
+	.jf-exhibit-track {
+		position: relative;
+		left: 0;
+		top: 0;
+		margin-top: 30px;
+		text-align: center;
+	}
+	.jf-exhibit-buttons {
+		-webkit-box-pack: center;
+	}
+}

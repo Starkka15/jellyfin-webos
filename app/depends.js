@@ -13,5 +13,6 @@ enyo.depends(
 	"source/NowPlayingView.js",
 	"source/Dashboard.js",
 	"source/PlayerView.js",
+	"source/Exhibition.js",
 	"source/App.js"
 );

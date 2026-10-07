@@ -8,7 +8,21 @@
 </head>
 <body>
 <script type="text/javascript">
-	new JF.App().renderInto(document.body);
+	// On a Touchstone dock the system launches the app as its exhibition, or the
+	// App opens this window for it (see Exhibition.js).
+	// The system's launch params belong to the app's first window; a window the app
+	// opens itself goes by the params it was opened with.
+	var jfLaunch = enyo.windowParams || {};
+	try {
+		if (enyo.windows.getRootWindow() === window && window.PalmSystem && PalmSystem.launchParams) {
+			jfLaunch = enyo.mixin(jfLaunch, enyo.json.parse(PalmSystem.launchParams) || {});
+		}
+	} catch (e) {}
+	if (jfLaunch.dockMode || jfLaunch.windowType === "dockModeWindow") {
+		new JF.Exhibition().renderInto(document.body);
+	} else {
+		new JF.App().renderInto(document.body);
+	}
 </script>
 </body>
 </html>

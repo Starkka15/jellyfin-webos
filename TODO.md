@@ -39,8 +39,8 @@ The rest are stock webOS 3 features the app does not use yet.
 - [x] **Just Type search.** Done: type in card view or the launcher and pick Jellyfin under
   Search Using. Off until turned on in Just Type's preferences, as for any app.
 
-- [ ] **Exhibition mode.** On a Touchstone dock, show what is playing or a slideshow of
-  library artwork. Stock webOS.
+- [x] **Exhibition mode.** Done: pick Jellyfin in Exhibition's menu. Shows the track playing
+  with its controls, or else movie and show artwork every 12 seconds, with a clock.
 
 ## Music
 

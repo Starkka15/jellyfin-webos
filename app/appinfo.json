@@ -16,5 +16,7 @@
 			"launchParam": "query"
 		}
 	},
+	"dockMode": true,
+	"exhibitionModeOptions": {"title": "Jellyfin"},
 	"keywords": ["Jellyfin", "Movies", "TV Shows"]
 }
