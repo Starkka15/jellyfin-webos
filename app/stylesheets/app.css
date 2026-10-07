@@ -1,0 +1,389 @@
+/* Jellyfin for webOS: dark theme over the stock Enyo 1 look. */
+
+body {
+	background: #10131a;
+	color: #e8eaed;
+	font-family: "Prelude", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.jf-app, .jf-view {
+	background: #10131a;
+	color: #e8eaed;
+}
+
+/* ---- header ------------------------------------------------------------ */
+
+.jf-header.enyo-header {
+	background: #1b2130;
+	border-bottom: 1px solid #2c3446;
+	color: #ffffff;
+	min-height: 56px;
+}
+.jf-header .enyo-button {
+	margin: 0 4px;
+}
+.jf-header-title {
+	font-size: 22px;
+	font-weight: bold;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.jf-header-indent {
+	padding-left: 14px;
+}
+.jf-search {
+	width: 220px;
+	margin-right: 4px;
+}
+.jf-header .jf-search input {
+	color: #15181f;
+}
+.jf-header-count {
+	font-size: 15px;
+	color: #9aa0a6;
+	padding-right: 8px;
+}
+
+/* ---- sign-in ----------------------------------------------------------- */
+
+.jf-login-box {
+	width: 520px;
+	margin: 40px auto;
+}
+.jf-brand {
+	font-size: 48px;
+	font-weight: bold;
+	color: #00a4dc;
+	text-align: center;
+	margin-bottom: 24px;
+}
+.jf-login-box .enyo-group-label {
+	color: #9aa0a6;
+}
+/* The stock group and input styles assume a light page; keep them light. */
+.jf-login-box .enyo-group-inner,
+.jf-login-box .enyo-item {
+	background: #eef0f4;
+	color: #15181f;
+}
+.jf-login-box input {
+	color: #15181f;
+}
+.jf-login-box .enyo-button {
+	margin-top: 18px;
+}
+
+.jf-message {
+	font-size: 17px;
+	color: #c5cad3;
+	padding: 14px 24px;
+	min-height: 20px;
+}
+
+/* ---- grids of posters -------------------------------------------------- */
+
+.jf-section {
+	font-size: 22px;
+	font-weight: bold;
+	padding: 18px 24px 4px 24px;
+}
+.jf-grid {
+	padding: 4px 14px 10px 14px;
+}
+.jf-tile {
+	display: inline-block;
+	vertical-align: top;
+	width: 150px;
+	margin: 10px;
+}
+.jf-tile-art {
+	position: relative;
+	width: 150px;
+	height: 220px;
+	background-color: #2a3142;
+	background-position: center center;
+	background-repeat: no-repeat;
+	-webkit-background-size: cover;
+	background-size: cover;
+	-webkit-border-radius: 6px;
+	border-radius: 6px;
+}
+.jf-tile-letter {
+	font-size: 72px;
+	font-weight: bold;
+	color: #4d5870;
+	text-align: center;
+	line-height: 220px;
+}
+/* Watched tick, or the number of unwatched episodes. */
+.jf-tile-badge {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	min-width: 18px;
+	height: 26px;
+	line-height: 26px;
+	padding: 0 4px;
+	font-size: 15px;
+	font-weight: bold;
+	text-align: center;
+	color: #ffffff;
+	background: #00a4dc;
+	-webkit-border-radius: 13px;
+	border-radius: 13px;
+}
+.jf-tile-progress {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 6px;
+	background: rgba(0, 0, 0, 0.6);
+}
+.jf-tile-progress-bar {
+	height: 6px;
+	background: #00a4dc;
+}
+.jf-tile-title {
+	font-size: 15px;
+	margin-top: 6px;
+	height: 36px;
+	line-height: 18px;
+	overflow: hidden;
+}
+.jf-tile-sub {
+	font-size: 13px;
+	color: #9aa0a6;
+	height: 17px;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.jf-more {
+	margin: 10px 24px 30px 24px;
+}
+
+/* ---- one item ---------------------------------------------------------- */
+
+.jf-detail {
+	padding: 24px;
+}
+.jf-detail-art {
+	width: 300px;
+	height: 440px;
+	background-color: #2a3142;
+	background-position: center top;
+	background-repeat: no-repeat;
+	-webkit-background-size: contain;
+	background-size: contain;
+}
+.jf-detail-info {
+	padding-left: 28px;
+}
+.jf-detail-name {
+	font-size: 30px;
+	font-weight: bold;
+}
+.jf-detail-meta {
+	font-size: 17px;
+	color: #9aa0a6;
+	margin: 8px 0 16px 0;
+}
+.jf-detail-buttons .enyo-button {
+	margin-right: 12px;
+	min-width: 150px;
+}
+.jf-detail-info .jf-message {
+	padding-left: 0;
+}
+.jf-detail-overview {
+	font-size: 18px;
+	line-height: 26px;
+	margin-top: 10px;
+}
+
+/* ---- player ------------------------------------------------------------ */
+
+/* Laid out like the TouchPad's own Videos app: the picture fills the view and
+   is never resized; the bars float over it and are only shown and hidden. */
+.jf-player {
+	background: #000000;
+}
+.jf-stage {
+	position: relative;
+	background: #000000;
+	overflow: hidden;
+}
+.jf-video,
+.jf-tap-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+}
+/* A line of text over the picture: "Starting...", errors. */
+.jf-player-status {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 45%;
+	font-size: 20px;
+	color: #e8eaed;
+	text-align: center;
+	text-shadow: 0 0 4px #000000;
+}
+.jf-player-top,
+.jf-transport {
+	position: absolute;
+	left: 0;
+	right: 0;
+	background: rgba(20, 24, 34, 0.85);
+	padding: 6px 10px;
+}
+.jf-player-top {
+	top: 0;
+	border-bottom: 1px solid #2c3446;
+}
+.jf-transport {
+	bottom: 0;
+	border-top: 1px solid #2c3446;
+}
+.jf-player-title {
+	font-size: 20px;
+	color: #e8eaed;
+	padding: 0 14px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.jf-player-top .enyo-button,
+.jf-transport .enyo-button {
+	margin: 0 4px;
+}
+.jf-pause {
+	min-width: 84px;
+}
+.jf-clock {
+	font-size: 16px;
+	color: #e8eaed;
+	padding: 0 10px;
+	min-width: 56px;
+	text-align: center;
+}
+.jf-transport .enyo-slider {
+	margin: 0 6px;
+}
+.jf-header .jf-search {
+	background: #eef0f4;
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
+}
+
+/* ---- music ------------------------------------------------------------- */
+
+/* Album covers are square. */
+.jf-tile-square .jf-tile-art {
+	height: 150px;
+}
+.jf-album-art {
+	width: 300px;
+	height: 300px;
+	background-color: #2a3142;
+	background-position: center center;
+	background-repeat: no-repeat;
+	-webkit-background-size: cover;
+	background-size: cover;
+	-webkit-border-radius: 6px;
+	border-radius: 6px;
+}
+.jf-album-artist {
+	font-size: 20px;
+	color: #c5cad3;
+	margin-top: 4px;
+}
+.jf-tracks {
+	margin-top: 18px;
+	border-top: 1px solid #2c3446;
+}
+.jf-track {
+	padding: 10px 6px;
+	border-bottom: 1px solid #2c3446;
+}
+.jf-track:active {
+	background: #1b2130;
+}
+.jf-track-number {
+	width: 44px;
+	font-size: 16px;
+	color: #8a93a3;
+	text-align: right;
+	padding-right: 14px;
+}
+.jf-track-name {
+	font-size: 18px;
+	color: #e8eaed;
+}
+.jf-track-artist {
+	font-size: 14px;
+	color: #8a93a3;
+}
+.jf-track-length {
+	font-size: 16px;
+	color: #8a93a3;
+	padding-left: 12px;
+}
+
+/* The music bar along the bottom of the app. */
+.jf-nowplaying {
+	background: #1b2130;
+	border-top: 1px solid #2c3446;
+	padding: 6px 10px;
+}
+.jf-np-art {
+	width: 52px;
+	height: 52px;
+	background-color: #2a3142;
+	background-position: center center;
+	background-repeat: no-repeat;
+	-webkit-background-size: cover;
+	background-size: cover;
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
+}
+.jf-np-text {
+	padding: 0 12px;
+	min-width: 0;
+	overflow: hidden;
+}
+.jf-np-title,
+.jf-np-artist {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.jf-np-title {
+	font-size: 17px;
+	color: #e8eaed;
+}
+.jf-np-artist {
+	font-size: 14px;
+	color: #8a93a3;
+}
+.jf-nowplaying .enyo-button {
+	margin: 0 3px;
+}
+.jf-np-button {
+	min-width: 44px;
+}
+.jf-np-pause {
+	min-width: 72px;
+}
+.jf-np-slider {
+	width: 220px;
+	margin: 0 4px;
+}
+.jf-np-audio {
+	display: none;
+}

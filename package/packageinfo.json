@@ -1,0 +1,9 @@
+{
+	"app": "com.stark.jellyfin",
+	"id": "com.stark.jellyfin",
+	"loc_name": "Jellyfin",
+	"package_format_version": 2,
+	"services": ["com.stark.jellyfin.service"],
+	"vendor": "stark",
+	"version": "0.2.0"
+}

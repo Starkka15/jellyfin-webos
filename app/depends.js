@@ -1,0 +1,14 @@
+enyo.depends(
+	"stylesheets/app.css",
+	"source/Api.js",
+	"source/Relay.js",
+	"source/Tile.js",
+	"source/LoginView.js",
+	"source/HomeView.js",
+	"source/BrowseView.js",
+	"source/DetailView.js",
+	"source/AlbumView.js",
+	"source/NowPlaying.js",
+	"source/PlayerView.js",
+	"source/App.js"
+);

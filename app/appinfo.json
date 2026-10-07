@@ -1,0 +1,11 @@
+{
+	"id": "com.stark.jellyfin",
+	"version": "0.2.0",
+	"vendor": "stark",
+	"type": "web",
+	"main": "index.html",
+	"title": "Jellyfin",
+	"icon": "images/icon.png",
+	"miniicon": "images/miniicon.png",
+	"uiRevision": 2
+}

@@ -1,0 +1,76 @@
+/* The contents of a library, folder, series or season, as a grid of posters. */
+enyo.kind({
+	name: "JF.BrowseView",
+	kind: enyo.VFlexBox,
+	className: "jf-view",
+	events: {
+		onOpen: "",
+		onBack: ""
+	},
+	pageSize: 60,
+	components: [
+		{kind: "PageHeader", className: "jf-header", components: [
+			{kind: "Button", caption: "Back", onclick: "doBack"},
+			{name: "title", content: "", flex: 1, className: "jf-header-title jf-header-indent"},
+			{name: "count", content: "", className: "jf-header-count"}
+		]},
+		{name: "scroller", kind: "Scroller", flex: 1, components: [
+			{name: "message", className: "jf-message"},
+			{name: "grid", className: "jf-grid"},
+			{name: "more", kind: "Button", caption: "Show More", onclick: "loadMore", showing: false,
+				className: "jf-more"}
+		]}
+	],
+
+	// Show the children of this item, from the top.
+	open: function(parent) {
+		this.parentItem = parent;
+		this.loaded = 0;
+		this.total = 0;
+		this.$.title.setContent(this.titleFor(parent));
+		this.$.count.setContent("");
+		this.$.grid.destroyControls();
+		this.$.grid.render();
+		this.$.more.setShowing(false);
+		this.$.scroller.setScrollTop(0);
+		this.loadMore();
+	},
+
+	titleFor: function(parent) {
+		if (parent.Type === "Season" && parent.SeriesName) {
+			return parent.SeriesName + " — " + parent.Name;
+		}
+		return parent.Name || "";
+	},
+
+	loadMore: function() {
+		var self = this;
+		var parent = this.parentItem;
+		this.$.message.setContent("Loading…");
+		this.$.more.setDisabled(true);
+		JF.api.children(parent, this.loaded, this.pageSize, function(ok, data, status) {
+			if (parent !== self.parentItem) {
+				return;  // the user moved on while this was loading
+			}
+			self.$.more.setDisabled(false);
+			if (!ok) {
+				self.$.message.setContent("Could not load this (" + (status || "no answer") + ").");
+				return;
+			}
+			var items = data.Items || [];
+			for (var i = 0; i < items.length; i++) {
+				self.$.grid.createComponent({kind: "JF.Tile", item: items[i], onTileClick: "tileClick", owner: self});
+			}
+			self.$.grid.render();
+			self.loaded += items.length;
+			self.total = data.TotalRecordCount || self.loaded;
+			self.$.message.setContent(self.loaded ? "" : "Nothing here.");
+			self.$.count.setContent(self.total ? self.loaded + " of " + self.total : "");
+			self.$.more.setShowing(items.length > 0 && self.loaded < self.total);
+		});
+	},
+
+	tileClick: function(inSender, item) {
+		this.doOpen(item);
+	}
+});
