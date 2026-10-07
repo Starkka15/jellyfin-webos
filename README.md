@@ -13,6 +13,21 @@ A Jellyfin client for the HP TouchPad, written in Enyo 1 (the TouchPad's own fra
 - Music player that keeps playing while you browse, with a Now Playing bar
 - Playback progress, watched status and play counts reported to the server
 
+## Screenshots
+
+Tap a picture for the full 1024×768 screenshot.
+
+| | |
+|---|---|
+| [![Home](screenshots/home-small.png)](screenshots/home.png) | [![Movies](screenshots/movies-small.png)](screenshots/movies.png) |
+| Home | Movies |
+| [![Shows](screenshots/shows-small.png)](screenshots/shows.png) | [![Music](screenshots/music-small.png)](screenshots/music.png) |
+| Shows | Music |
+| [![Video with controls](screenshots/video-controls-small.png)](screenshots/video-controls.png) | [![Video](screenshots/video-small.png)](screenshots/video.png) |
+| Video, controls showing | Video, full screen with subtitles |
+| [![Album and Now Playing](screenshots/album-small.png)](screenshots/album.png) | |
+| Album, with the Now Playing bar | |
+
 ## Requirements
 
 - HP TouchPad running **webOS Community Edition 3.1.0** (recommended), or webOS 3.0.5.
@@ -43,11 +58,12 @@ A few things the TouchPad needs, found the hard way:
 ## Layout
 
 ```
-app/       the Enyo 1 web app (appinfo.json, index.html, source/, stylesheets/)
-service/   the stream relay, a Node.js 0.4 webOS service
-package/   packageinfo.json, which bundles the app and service into one .ipk
-art/       icon.svg, the source of the app icons
-tools/     deploy.ps1 (package, install, launch) and tp-tools.ps1 (device helpers)
+app/          the Enyo 1 web app (appinfo.json, index.html, source/, stylesheets/)
+service/      the stream relay, a Node.js 0.4 webOS service
+package/      packageinfo.json, which bundles the app and service into one .ipk
+art/          icon.svg, the source of the app icons
+screenshots/  README pictures (*-small.png) and the full-size originals
+tools/        deploy.ps1 (package, install, launch) and tp-tools.ps1 (device helpers)
 ```
 
 ## Building
