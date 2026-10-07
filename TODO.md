@@ -7,7 +7,7 @@ The rest are stock webOS 3 features the app does not use yet.
 
 ## Most worth doing
 
-- [x] **Downloads for offline viewing.** Done in 0.4.0: Download on a movie or episode
+- [x] **Downloads for offline viewing.** Done (after 0.3.0): Download on a movie or episode
   page, with a choice of audio, subtitles and quality; plays offline with instant
   seeking; Downloads row on the home screen.
   - [ ] Download a whole season at once
