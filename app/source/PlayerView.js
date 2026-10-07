@@ -502,7 +502,7 @@ enyo.kind({
 				this.setStatus("Reconnecting…");
 				this.startStream(this.positionTicks());
 			} else {
-				this.setStatus("The TouchPad could not play this video (error " + code + ").");
+				this.setStatus("This device could not play this video (error " + code + ").");
 				this.stopTimers();
 			}
 			return;
