@@ -61,7 +61,7 @@ A few things the TouchPad needs, found the hard way:
 ## Finding the server at home
 
 The sign-in screen lists Jellyfin servers on your network, and if you signed in with an
- address, the app learns the same server's home address and switches to it
+`https` address, the app learns the same server's home address and switches to it
 whenever it answers. Both rely on Jellyfin's discovery, which is on by default
 (Dashboard → Networking → Enable Auto Discovery). webOS's firewall drops replies to a
 broadcast, so the bundled service also asks each address on the local network directly.
