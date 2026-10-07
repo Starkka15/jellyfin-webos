@@ -25,10 +25,24 @@ enyo.kind({
 		// Music keeps playing while browsing; its bar sits under every screen.
 		{name: "nowPlaying", kind: "JF.NowPlaying", onOpen: "openNowPlaying"},
 		{name: "relay", kind: "JF.Relay"},
+		// Under the app's name, top left. On a phone, Refresh and Sign Out live only here.
+		{kind: "AppMenu", components: [
+			{caption: "Refresh", onclick: "refreshClick"},
+			{caption: "Sign Out", onclick: "signOut"}
+		]},
 		{name: "downloads", kind: "JF.Downloads"}
 	],
 
 	create: function() {
+		// Phones (the Pre3, for one) are under 600 pixels across in either direction;
+		// they get the compact layout under .jf-phone in app.css, held upright.
+		JF.phone = Math.min(window.innerWidth || 1024, window.innerHeight || 768) < 600;
+		if (JF.phone) {
+			document.body.className += " jf-phone";
+			if (window.PalmSystem) {
+				enyo.setAllowedOrientation("up");
+			}
+		}
 		this.inherited(arguments);
 		// Each entry is {view: "browse" | "detail", item: {...}}; home is the bottom.
 		this.stack = [];
@@ -208,6 +222,10 @@ enyo.kind({
 	signedIn: function() {
 		this.$.downloads.restore();
 		this.showHome();
+	},
+
+	refreshClick: function() {
+		this.$.home.load();
 	},
 
 	signOut: function() {

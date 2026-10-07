@@ -57,7 +57,7 @@ enyo.kind({
 		this.sortType = this.sortTypeFor(parent);
 		this.$.sortButton.setShowing(!!this.sortType);
 		if (this.sortType) {
-			this.$.sortButton.setCaption("Sort: " + JF.api.sortFor(this.sortType).choice[1]);
+			this.$.sortButton.setCaption(JF.phone ? "Sort" : "Sort: " + JF.api.sortFor(this.sortType).choice[1]);
 		}
 		// A show opens here, not on a detail page, so it is made a favorite here.
 		this.$.favorite.setShowing(parent.Type === "Series" || parent.Type === "BoxSet");

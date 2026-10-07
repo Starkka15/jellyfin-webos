@@ -10,12 +10,13 @@ enyo.kind({
 	},
 	components: [
 		{kind: "PageHeader", className: "jf-header", components: [
-			{name: "title", content: "Jellyfin", flex: 1, className: "jf-header-title"},
+			// On a phone only the search fits; Refresh and Sign Out are in the app menu.
+			{name: "title", content: "Jellyfin", flex: 1, className: "jf-header-title jf-wide-only"},
 			{name: "search", kind: "Input", hint: "Search", className: "jf-search",
 				autoCapitalize: "lowercase", autocorrect: false, spellcheck: false, onkeypress: "searchKey"},
 			{kind: "Button", caption: "Search", onclick: "searchClick"},
-			{kind: "Button", caption: "Refresh", onclick: "load"},
-			{kind: "Button", caption: "Sign Out", onclick: "doSignOut"}
+			{kind: "Button", caption: "Refresh", onclick: "load", className: "jf-wide-only"},
+			{kind: "Button", caption: "Sign Out", onclick: "doSignOut", className: "jf-wide-only"}
 		]},
 		{kind: "Scroller", flex: 1, components: [
 			{name: "message", className: "jf-message"},

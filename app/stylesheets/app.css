@@ -624,3 +624,284 @@ body {
 .jf-playlist-choices {
 	height: 200px;
 }
+
+/* ---- phones ----------------------------------------------------------------
+
+   Set on <body> by App.create when the screen is under 600 pixels across in
+   either direction: the Pre3 is 320 x 533 at its 1.5x scale. The app is held
+   upright, except for video. Experimental; tried on a Pre3 by others. */
+
+.jf-phone .jf-wide-only {
+	display: none;
+}
+.jf-phone .jf-header.enyo-header {
+	min-height: 44px;
+}
+.jf-phone .jf-header .enyo-button {
+	margin: 0 2px;
+}
+.jf-phone .jf-header-title {
+	font-size: 17px;
+}
+.jf-phone .jf-header-indent {
+	padding-left: 8px;
+}
+.jf-phone .jf-header-count {
+	display: none;
+}
+.jf-phone .jf-header .enyo-header-inner {
+	padding: 5px 6px;
+	min-height: 0;
+}
+/* Enyo frames an input with 14 pixels each side; a thinner frame keeps the search bar slim. */
+.jf-phone .jf-header .jf-search {
+	width: auto;
+	-webkit-box-flex: 1;
+	margin-left: 0;
+	border-width: 5px 8px;
+	font-size: 15px;
+}
+.jf-phone .jf-message {
+	font-size: 15px;
+	padding: 10px 10px;
+}
+/* No room to spare for a message line with nothing in it. */
+.jf-phone .jf-message:empty {
+	min-height: 0;
+	padding: 0;
+}
+.jf-phone .jf-login-box {
+	width: auto;
+	margin: 16px 10px;
+}
+.jf-phone .jf-brand {
+	font-size: 34px;
+	margin-bottom: 12px;
+}
+
+/* Three posters to a row. */
+.jf-phone .jf-section {
+	font-size: 17px;
+	padding: 12px 10px 2px 10px;
+}
+.jf-phone .jf-grid {
+	padding: 2px 2px 6px 2px;
+}
+/* 3 x (94 + 2 x 5) + 4 = 316, inside the 320 of a phone held upright. */
+.jf-phone .jf-tile {
+	width: 94px;
+	margin: 5px;
+}
+.jf-phone .jf-tile-art {
+	width: 94px;
+	height: 138px;
+}
+.jf-phone .jf-tile-square .jf-tile-art {
+	height: 94px;
+}
+.jf-phone .jf-tile-letter {
+	font-size: 40px;
+	line-height: 138px;
+}
+.jf-phone .jf-tile-square .jf-tile-letter {
+	line-height: 94px;
+}
+.jf-phone .jf-tile-title {
+	font-size: 12px;
+	height: 30px;
+	line-height: 15px;
+	margin-top: 4px;
+}
+.jf-phone .jf-tile-sub {
+	font-size: 11px;
+	height: 14px;
+}
+.jf-phone .jf-tile-badge {
+	top: 4px;
+	right: 4px;
+	font-size: 12px;
+	height: 22px;
+	line-height: 22px;
+	min-width: 14px;
+}
+.jf-phone .jf-tile-badge.jf-tile-seen {
+	width: 22px;
+}
+.jf-phone .jf-tile-seen:after {
+	left: 7px;
+	top: 3px;
+	width: 5px;
+	height: 10px;
+}
+.jf-phone .jf-tabs {
+	margin: 8px 6px 0;
+}
+.jf-phone .jf-tabs .enyo-radiobutton {
+	font-size: 12px;
+	padding-left: 0;
+	padding-right: 0;
+}
+.jf-phone .jf-more {
+	margin: 8px 10px 20px 10px;
+}
+
+/* A movie, episode or album: the picture above the details, not beside them. */
+.jf-phone .jf-detail {
+	padding: 10px;
+	-webkit-box-orient: vertical;
+}
+.jf-phone .jf-detail-art {
+	width: auto;
+	height: 220px;
+	background-color: transparent;
+	background-position: center center;
+}
+.jf-phone .jf-album-art {
+	width: 180px;
+	height: 180px;
+	margin: 0 auto;
+}
+.jf-phone .jf-detail-info {
+	padding: 10px 0 0 0;
+}
+.jf-phone .jf-detail-name {
+	font-size: 21px;
+}
+.jf-phone .jf-album-artist {
+	font-size: 16px;
+}
+.jf-phone .jf-detail-meta {
+	font-size: 14px;
+	margin: 4px 0 10px 0;
+}
+/* Buttons wrap onto a second line instead of running off the screen. */
+.jf-phone .jf-detail-buttons {
+	display: block;
+}
+.jf-phone .jf-detail-buttons .enyo-button {
+	display: inline-block;
+	min-width: 0;
+	margin: 0 6px 6px 0;
+}
+.jf-phone .jf-detail-overview {
+	font-size: 15px;
+	line-height: 21px;
+}
+.jf-phone .jf-download-status {
+	font-size: 14px;
+}
+.jf-phone .jf-track {
+	padding: 8px 2px;
+}
+.jf-phone .jf-track-number {
+	width: 26px;
+	font-size: 14px;
+	padding-right: 8px;
+}
+.jf-phone .jf-track-name {
+	font-size: 15px;
+}
+.jf-phone .jf-track-artist {
+	font-size: 12px;
+}
+.jf-phone .jf-track-length {
+	font-size: 14px;
+	padding-left: 6px;
+}
+.jf-phone .jf-track-more {
+	min-width: 0;
+	margin-left: 6px;
+}
+
+/* The music bar: art, title, Pause, Next and Stop. */
+.jf-phone .jf-nowplaying {
+	padding: 4px 4px;
+}
+.jf-phone .jf-np-art {
+	width: 40px;
+	height: 40px;
+}
+.jf-phone .jf-np-text {
+	padding: 0 6px;
+}
+.jf-phone .jf-np-title {
+	font-size: 14px;
+}
+.jf-phone .jf-np-artist {
+	font-size: 12px;
+}
+.jf-phone .jf-nowplaying .jf-clock,
+.jf-phone .jf-np-slider {
+	display: none;
+}
+.jf-phone .jf-nowplaying .enyo-button {
+	margin: 0 1px;
+}
+.jf-phone .jf-np-button,
+.jf-phone .jf-np-pause {
+	min-width: 0;
+}
+
+/* Now Playing: the cover and controls above the queue. */
+.jf-phone .jf-npv-body {
+	-webkit-box-orient: vertical;
+}
+.jf-phone .jf-npv-left {
+	width: auto;
+	padding: 8px 10px 0;
+}
+.jf-phone .jf-npv-art {
+	width: 130px;
+	height: 130px;
+	margin: 0 auto;
+}
+.jf-phone .jf-npv-title {
+	font-size: 17px;
+	margin-top: 6px;
+	text-align: center;
+}
+.jf-phone .jf-npv-artist {
+	font-size: 13px;
+	text-align: center;
+}
+.jf-phone .jf-npv-transport .enyo-button,
+.jf-phone .jf-npv-modes .enyo-button {
+	margin: 2px 3px;
+}
+.jf-phone .jf-npv-right {
+	padding: 0 10px;
+}
+.jf-phone .jf-npv-heading {
+	padding: 6px 0 2px;
+}
+
+/* Video: smaller bars over the picture. */
+.jf-phone .jf-player-top,
+.jf-phone .jf-transport {
+	padding: 3px 4px;
+}
+.jf-phone .jf-player-title {
+	font-size: 15px;
+	padding: 0 6px;
+}
+.jf-phone .jf-player-top .enyo-button,
+.jf-phone .jf-transport .enyo-button {
+	margin: 0 2px;
+}
+.jf-phone .jf-pause {
+	min-width: 0;
+}
+.jf-phone .jf-clock {
+	font-size: 13px;
+	padding: 0 4px;
+	min-width: 0;
+}
+.jf-phone .jf-player-status {
+	font-size: 16px;
+	padding: 0 10px;
+}
+
+/* Dialogs fit the screen: Enyo makes them 320 wide plus a 24 pixel frame each side. */
+.jf-phone .enyo-modaldialog {
+	width: 264px;
+}

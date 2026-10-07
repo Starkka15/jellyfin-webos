@@ -375,11 +375,19 @@ JF.api = {
 	},
 
 	favoriteCaption: function(item) {
-		return item.UserData && item.UserData.IsFavorite ? "Remove from Favorites" : "Add to Favorites";
+		var on = item && item.UserData && item.UserData.IsFavorite;
+		if (JF.phone) {
+			return on ? "Unfavorite" : "Favorite";
+		}
+		return on ? "Remove from Favorites" : "Add to Favorites";
 	},
 
 	// Flip an item's favorite mark and keep the record in step. callback(ok)
 	toggleFavorite: function(item, callback) {
+		if (!item) {
+			callback(false);  // a tap that landed while the page was changing
+			return;
+		}
 		var on = !(item.UserData && item.UserData.IsFavorite);
 		this.setFavorite(item.Id, on, function(ok) {
 			if (ok) {

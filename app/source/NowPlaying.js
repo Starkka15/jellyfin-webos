@@ -20,7 +20,8 @@ enyo.kind({
 			{name: "title", className: "jf-np-title"},
 			{name: "artist", className: "jf-np-artist"}
 		]},
-		{kind: "Button", caption: "Prev", onclick: "previousClick", className: "jf-np-button"},
+		// On a phone the bar keeps Pause, Next and Stop; Prev is on the Now Playing screen.
+		{kind: "Button", caption: "Prev", onclick: "previousClick", className: "jf-np-button jf-wide-only"},
 		{name: "pauseButton", kind: "Button", caption: "Pause", onclick: "pauseClick", className: "jf-np-pause"},
 		{kind: "Button", caption: "Next", onclick: "nextClick", className: "jf-np-button"},
 		{name: "clock", content: "0:00", className: "jf-clock"},

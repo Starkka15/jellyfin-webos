@@ -291,7 +291,7 @@ enyo.kind({
 		if (!window.PalmSystem) {
 			return;
 		}
-		enyo.setAllowedOrientation(on ? (window.PalmSystem.videoOrientation || "up") : "free");
+		enyo.setAllowedOrientation(on ? (window.PalmSystem.videoOrientation || "up") : (JF.phone ? "up" : "free"));
 	},
 
 	// ---- the controls over the picture -------------------------------------

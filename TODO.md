@@ -69,6 +69,9 @@ The rest are stock webOS 3 features the app does not use yet.
 
 ## Known issues
 
+- [ ] Video on a Pre3 fails with error 2 (a tester's report); cause not known yet.
+- [ ] The phone layout is checked in a desktop preview only; not yet on a real phone.
+
 - [ ] After a seek or track change, a converted stream takes a few seconds to start.
 - [ ] A tap sometimes arrives twice; a 700 ms repeat filter covers it, cause unknown.
 - [ ] Wired headset button and unplug-to-pause are untested (no wired headphones to hand);

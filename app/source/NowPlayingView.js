@@ -16,7 +16,7 @@ enyo.kind({
 			{content: "Now Playing", flex: 1, className: "jf-header-title jf-header-indent"},
 			{name: "count", className: "jf-header-count"}
 		]},
-		{kind: "HFlexBox", flex: 1, components: [
+		{kind: "HFlexBox", flex: 1, className: "jf-npv-body", components: [
 			{className: "jf-npv-left", components: [
 				{name: "art", className: "jf-npv-art"},
 				{name: "title", className: "jf-npv-title"},
