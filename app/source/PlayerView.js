@@ -76,12 +76,14 @@ enyo.kind({
 		this.item = item;
 		this.audioStreams = JF.api.streams(item, "Audio");
 		this.subtitleStreams = JF.api.streams(item, "Subtitle");
-		this.audioIndex = this.preferredStream(this.audioStreams, localStorage.getItem("jf.audioLanguage"));
-		this.chooseSubtitle(localStorage.getItem("jf.subtitles") === "on" ?
-			this.preferredSubtitle(localStorage.getItem("jf.subtitleLanguage")) : -1);
+		var tracks = JF.api.defaultTracks(item);
+		this.audioIndex = tracks.audioIndex;
+		this.chooseSubtitle(tracks.subtitleIndex);
 		this.$.title.setContent(item.SeriesName ? item.SeriesName + " — " + item.Name : item.Name || "");
-		this.$.audioButton.setShowing(this.audioStreams.length > 1);
-		this.$.subtitleButton.setShowing(this.subtitleStreams.length > 0);
+		// A download plays from the tablet; its tracks were fixed when it was made.
+		this.localFile = JF.downloads ? JF.downloads.localFile(item.Id) : null;
+		this.$.audioButton.setShowing(!this.localFile && this.audioStreams.length > 1);
+		this.$.subtitleButton.setShowing(!this.localFile && this.subtitleStreams.length > 0);
 		// Full screen before anything plays, as Palm's player does.
 		enyo.setFullScreen(true);
 		enyo.windows.setWindowProperties(window, {blockScreenTimeout: true});
@@ -112,35 +114,34 @@ enyo.kind({
 		this.showPosition(startTicks);
 		this.showControls();
 		var request = this.request = {};
-		JF.api.playbackInfo(this.item, {audioIndex: this.audioIndex, subtitleIndex: this.subtitleIndex, startTicks: startTicks},
-			function(info) {
+		this.findStream(startTicks, function(info) {
+			if (request !== self.request || !self.playing) {
+				return;  // something newer was asked for meanwhile
+			}
+			if (!info) {
+				self.setStatus("The server could not find a way to play this on the TouchPad.");
+				return;
+			}
+			self.info = info;
+			self.direct = info.method === "DirectPlay";
+			// A file always starts at 0:00; move to the start once it has loaded.
+			self.pendingSeek = self.direct && startTicks ? startTicks / 10000000 : null;
+			JF.log("play " + self.item.Id + " " + info.method + " from " + JF.api.ticksToClock(startTicks) +
+				" audio " + self.audioIndex + " subtitles " + self.subtitleIndex +
+				"; server chose " + ((info.url.match(/(Audio|Subtitle)StreamIndex=-?\d+/g) || []).join(" ") || "defaults"));
+			// An https stream goes through our relay service (see Relay.js).
+			self.relayed = JF.relay.needed(info.url);
+			JF.relay.open(info.url, function(url) {
 				if (request !== self.request || !self.playing) {
-					return;  // something newer was asked for meanwhile
-				}
-				if (!info) {
-					self.setStatus("The server could not find a way to play this on the TouchPad.");
 					return;
 				}
-				self.info = info;
-				self.direct = info.method === "DirectPlay";
-				// A file always starts at 0:00; move to the start once it has loaded.
-				self.pendingSeek = self.direct && startTicks ? startTicks / 10000000 : null;
-				JF.log("play " + self.item.Id + " " + info.method + " from " + JF.api.ticksToClock(startTicks) +
-					" audio " + self.audioIndex + " subtitles " + self.subtitleIndex +
-					"; server chose " + ((info.url.match(/(Audio|Subtitle)StreamIndex=-?\d+/g) || []).join(" ") || "defaults"));
-				// An https stream goes through our relay service (see Relay.js).
-				self.relayed = JF.relay.needed(info.url);
-				JF.relay.open(info.url, function(url) {
-					if (request !== self.request || !self.playing) {
-						return;
-					}
-					if (url) {
-						self.playUrl(url);
-					} else {
-						self.setStatus("Could not start the stream relay. Try reinstalling the app.");
-					}
-				});
+				if (url) {
+					self.playUrl(url);
+				} else {
+					self.setStatus("Could not start the stream relay. Try reinstalling the app.");
+				}
 			});
+		});
 	},
 
 	playUrl: function(url) {
@@ -152,6 +153,17 @@ enyo.kind({
 		}
 		this.tellServer("/Sessions/Playing");
 		this.timer = setInterval(function() { self.tick(); }, 1000);
+	},
+
+	// How to play the item: its download if there is one, else ask the server.
+	findStream: function(startTicks, callback) {
+		if (this.localFile) {
+			callback({method: "DirectPlay", url: "file://" + this.localFile, mediaSourceId: this.item.Id,
+				playSessionId: "local" + new Date().getTime().toString(16)});
+			return;
+		}
+		JF.api.playbackInfo(this.item, {audioIndex: this.audioIndex, subtitleIndex: this.subtitleIndex,
+			startTicks: startTicks}, callback);
 	},
 
 	setStatus: function(text) {
@@ -386,35 +398,6 @@ enyo.kind({
 	},
 
 	// ---- audio and subtitles -----------------------------------------------
-
-	preferredStream: function(streams, language) {
-		if (language) {
-			for (var i = 0; i < streams.length; i++) {
-				if (streams[i].language === language) {
-					return streams[i].index;
-				}
-			}
-		}
-		return null;  // let the server pick its default
-	},
-
-	// Prefer full subtitles over the signs-and-songs tracks anime releases carry.
-	preferredSubtitle: function(language) {
-		var first = -1;
-		for (var i = 0; i < this.subtitleStreams.length; i++) {
-			var s = this.subtitleStreams[i];
-			if (language && s.language !== language) {
-				continue;
-			}
-			if (first < 0) {
-				first = s.index;
-			}
-			if (!/sign|song/i.test(s.title)) {
-				return s.index;
-			}
-		}
-		return first;
-	},
 
 	menuItems: function(streams, current, withOff) {
 		// MenuCheckItem draws its tick from an image: the TouchPad font has no ✓.

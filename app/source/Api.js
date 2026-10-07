@@ -321,7 +321,7 @@ JF.api = {
 		};
 	},
 
-	// Ask the server how to play an item. options: {audioIndex, subtitleIndex, startTicks};
+	// Ask the server how to play an item. options: {audioIndex, subtitleIndex, startTicks, maxBitrate};
 	// subtitleIndex -1 means no subtitles.
 	// callback({url, playSessionId, mediaSourceId, method: "DirectPlay" | "Transcode"}) or callback(null)
 	playbackInfo: function(item, options, callback) {
@@ -332,7 +332,7 @@ JF.api = {
 			// Without MediaSourceId the server ignores the audio and subtitle
 			// choice below and uses its defaults.
 			MediaSourceId: item.MediaSources && item.MediaSources[0] ? item.MediaSources[0].Id : item.Id,
-			MaxStreamingBitrate: 3000000,
+			MaxStreamingBitrate: options.maxBitrate || 3000000,
 			StartTimeTicks: options.startTicks || 0,
 			EnableDirectPlay: true,
 			EnableDirectStream: false,
@@ -375,7 +375,13 @@ JF.api = {
 
 	// ---- URLs -------------------------------------------------------------
 
+	// A downloaded item's poster comes from the tablet, so it shows offline too.
 	imageUrl: function(item, maxHeight) {
+		var local = JF.downloads && item.Id && JF.downloads.localImage(item.Id);
+		return local ? "file://" + local : this.serverImageUrl(item, maxHeight);
+	},
+
+	serverImageUrl: function(item, maxHeight) {
 		var id = item.Id;
 		var tag = item.ImageTags && item.ImageTags.Primary;
 		if (!tag && item.SeriesPrimaryImageTag && item.SeriesId) {
@@ -393,6 +399,39 @@ JF.api = {
 		return !!item.IsFolder || item.Type === "Series" || item.Type === "Season" ||
 			item.Type === "CollectionFolder" || item.Type === "BoxSet" || item.Type === "Folder" ||
 			item.Type === "UserView";
+	},
+
+	// The audio and subtitle tracks to start with, from the languages last chosen
+	// in the player. audioIndex null lets the server pick; subtitleIndex -1 is off.
+	defaultTracks: function(item) {
+		var audio = this.streams(item, "Audio");
+		var subs = this.streams(item, "Subtitle");
+		var audioIndex = null;
+		var language = localStorage.getItem("jf.audioLanguage");
+		for (var i = 0; language && i < audio.length; i++) {
+			if (audio[i].language === language) {
+				audioIndex = audio[i].index;
+				break;
+			}
+		}
+		var subtitleIndex = -1;
+		if (localStorage.getItem("jf.subtitles") === "on") {
+			// Prefer full subtitles over the signs-and-songs tracks anime releases carry.
+			language = localStorage.getItem("jf.subtitleLanguage");
+			for (i = 0; i < subs.length; i++) {
+				if (language && subs[i].language !== language) {
+					continue;
+				}
+				if (subtitleIndex < 0) {
+					subtitleIndex = subs[i].index;
+				}
+				if (!/sign|song/i.test(subs[i].title)) {
+					subtitleIndex = subs[i].index;
+					break;
+				}
+			}
+		}
+		return {audioIndex: audioIndex, subtitleIndex: subtitleIndex};
 	},
 
 	// Audio or subtitle streams of a full item record, as [{index, title, language}].

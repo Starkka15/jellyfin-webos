@@ -405,3 +405,22 @@ body {
 	border-width: 0 3px 3px 0;
 	-webkit-transform: rotate(45deg);
 }
+
+/* ---- downloads --------------------------------------------------------- */
+
+.jf-download-status {
+	font-size: 16px;
+	color: #c5cad3;
+	margin-top: 10px;
+}
+.jf-dialog-note {
+	font-size: 15px;
+	color: #555555;
+	padding: 10px 4px;
+}
+/* Enyo's dialogs are light and assume dark text; without this they inherit the
+   page's light text and their labels all but vanish. */
+.enyo-modaldialog,
+.enyo-modaldialog .enyo-item {
+	color: #2b2f36;
+}

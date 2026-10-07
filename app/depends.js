@@ -2,6 +2,7 @@ enyo.depends(
 	"stylesheets/app.css",
 	"source/Api.js",
 	"source/Relay.js",
+	"source/Downloads.js",
 	"source/Tile.js",
 	"source/LoginView.js",
 	"source/HomeView.js",

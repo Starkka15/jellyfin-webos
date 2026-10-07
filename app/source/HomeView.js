@@ -19,6 +19,9 @@ enyo.kind({
 		]},
 		{kind: "Scroller", flex: 1, components: [
 			{name: "message", className: "jf-message"},
+			// Local, so it shows even when the server cannot be reached.
+			{name: "downloadsLabel", content: "Downloads", className: "jf-section", showing: false},
+			{name: "downloads", className: "jf-grid"},
 			{name: "librariesLabel", content: "Libraries", className: "jf-section", showing: false},
 			{name: "libraries", className: "jf-grid"},
 			{name: "resumeLabel", content: "Continue Watching", className: "jf-section", showing: false},
@@ -32,6 +35,7 @@ enyo.kind({
 
 	load: function() {
 		var self = this;
+		this.showDownloads();
 		this.$.title.setContent(JF.api.userName ? "Jellyfin — " + JF.api.userName : "Jellyfin");
 		this.$.message.setContent("Loading…");
 		JF.api.views(function(ok, data, status) {
@@ -52,6 +56,23 @@ enyo.kind({
 		JF.api.latest(function(ok, data) {
 			self.fill("latest", ok && enyo.isArray(data) ? data : []);
 		});
+	},
+
+	// Rebuilt only when downloads are added, finish or go away, not on progress.
+	showDownloads: function() {
+		if (!this.listening) {
+			this.listening = true;
+			JF.downloads.addListener(enyo.bind(this, "showDownloads"));
+		}
+		var items = JF.downloads.items();
+		var key = "";
+		for (var i = 0; i < items.length; i++) {
+			key += items[i].Id + ":" + JF.downloads.get(items[i].Id).state + " ";
+		}
+		if (key !== this.downloadsKey) {
+			this.downloadsKey = key;
+			this.fill("downloads", items);
+		}
 	},
 
 	fill: function(name, items) {

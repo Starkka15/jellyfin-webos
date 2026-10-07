@@ -7,12 +7,12 @@ The rest are stock webOS 3 features the app does not use yet.
 
 ## Most worth doing
 
-- [ ] **Downloads for offline viewing.** CE's download manager reaches modern HTTPS
-  servers, so the app could ask the server for a TouchPad-ready version of an episode
-  or film and save it to the tablet. It would then play from local storage with no
-  network, and seek instantly instead of waiting for a new stream.
-  *First check:* how the download manager behaves with a file the server is still
-  converting while it is being downloaded.
+- [x] **Downloads for offline viewing.** Done in 0.4.0: Download on a movie or episode
+  page, with a choice of audio, subtitles and quality; plays offline with instant
+  seeking; Downloads row on the home screen.
+  - [ ] Download a whole season at once
+  - [ ] Report progress watched offline to the server when back online
+  - [ ] Warn before a download that would not fit in the free space
 
 - [ ] **Music controls outside the app.** A small dashboard (notification) window with
   pause and skip, so music can be controlled while another app is open. Include

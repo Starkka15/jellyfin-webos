@@ -15,7 +15,8 @@ enyo.kind({
 		]},
 		// Music keeps playing while browsing; its bar sits under every screen.
 		{name: "nowPlaying", kind: "JF.NowPlaying"},
-		{name: "relay", kind: "JF.Relay"}
+		{name: "relay", kind: "JF.Relay"},
+		{name: "downloads", kind: "JF.Downloads"}
 	],
 
 	create: function() {
@@ -23,6 +24,7 @@ enyo.kind({
 		// Each entry is {view: "browse" | "detail", item: {...}}; home is the bottom.
 		this.stack = [];
 		JF.relay = this.$.relay;
+		JF.downloads = this.$.downloads;
 	},
 
 	rendered: function() {
@@ -30,6 +32,7 @@ enyo.kind({
 		if (!this.started) {
 			this.started = true;
 			if (JF.api.restore()) {
+				this.$.downloads.restore();
 				this.showHome();
 				this.testLaunch(enyo.windowParams || {});
 			} else {
@@ -55,6 +58,19 @@ enyo.kind({
 				if (ok && item) {
 					self.lastAction = 0;
 					self.openItem(self, item);
+					// {open: '<id>', options: true} also opens the download options.
+					if (params.options) {
+						setTimeout(function() { self.$.detail.openOptions(); }, 2500);
+					}
+				}
+			});
+			return;
+		}
+		// {download: '<item id>'} starts a download, as the item page's button does.
+		if (params.download) {
+			JF.api.item(params.download, function(ok, item) {
+				if (ok && item) {
+					JF.downloads.start(item);
 				}
 			});
 			return;
@@ -88,6 +104,7 @@ enyo.kind({
 	// ---- navigation --------------------------------------------------------
 
 	signedIn: function() {
+		this.$.downloads.restore();
 		this.showHome();
 	},
 

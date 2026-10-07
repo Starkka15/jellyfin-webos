@@ -25,9 +25,41 @@ enyo.kind({
 							onclick: "playClick"},
 						{name: "watched", kind: "Button", caption: "Mark Watched", onclick: "watchedClick"}
 					]},
+					// A row of its own: a movie's Resume, Play and Watched already fill the first.
+					{kind: "HFlexBox", className: "jf-detail-buttons", components: [
+						{name: "download", kind: "Button", caption: "Download", onclick: "downloadClick", showing: false}
+					]},
+					{name: "downloadStatus", className: "jf-download-status", showing: false},
 					{name: "note", className: "jf-message"},
 					{name: "overview", className: "jf-detail-overview"}
 				]}
+			]}
+		]},
+		// Options for a download: which audio and subtitles go into the file, and how big it gets.
+		{name: "dlDialog", kind: "ModalDialog", caption: "Download", lazy: false, components: [
+			{kind: "RowGroup", components: [
+				{kind: "Item", layoutKind: "HFlexLayout", align: "center", components: [
+					{content: "Audio", flex: 1},
+					{name: "dlAudio", kind: "ListSelector"}
+				]},
+				{kind: "Item", layoutKind: "HFlexLayout", align: "center", components: [
+					{content: "Subtitles", flex: 1},
+					{name: "dlSubtitles", kind: "ListSelector"}
+				]},
+				{kind: "Item", layoutKind: "HFlexLayout", align: "center", components: [
+					{content: "Quality", flex: 1},
+					{name: "dlQuality", kind: "ListSelector", onChange: "showEstimate", items: [
+						{caption: "Best", value: 3000000},
+						{caption: "Smaller", value: 1500000},
+						{caption: "Smallest", value: 800000}
+					]}
+				]}
+			]},
+			{name: "dlEstimate", className: "jf-dialog-note"},
+			{kind: "HFlexBox", components: [
+				{kind: "Button", caption: "Cancel", flex: 1, onclick: "closeOptions"},
+				{kind: "Button", caption: "Download", flex: 1, className: "enyo-button-affirmative",
+					onclick: "confirmDownload"}
 			]}
 		]}
 	],
@@ -61,6 +93,104 @@ enyo.kind({
 		this.$.watched.setShowing(video);
 		this.$.watched.setCaption(item.UserData && item.UserData.Played ? "Mark Unwatched" : "Mark Watched");
 		this.$.note.setContent(playable ? "" : "This app cannot play this kind of item yet.");
+		this.showDownload();
+	},
+
+	// ---- offline download ------------------------------------------------------
+
+	showDownload: function() {
+		if (!this.listening) {
+			this.listening = true;
+			JF.downloads.addListener(enyo.bind(this, "showDownload"));
+		}
+		var item = this.item;
+		var video = item && item.MediaType === "Video";
+		var e = video ? JF.downloads.get(item.Id) : null;
+		var state = e ? e.state : "none";
+		var mb = e ? Math.round(e.received / 1048576) : 0;
+		var captions = {none: "Download", queued: "Cancel Download", downloading: "Cancel Download",
+			done: "Delete Download", failed: "Retry Download"};
+		var notes = {
+			none: "",
+			queued: "Waiting for another download to finish.",
+			downloading: "Downloading… " + mb + " MB so far." + (e && e.description ? " " + e.description + "." : ""),
+			done: "Downloaded (" + mb + " MB). Plays without a connection." +
+				(e && e.description ? " " + e.description + "." : ""),
+			failed: e && e.error ? e.error : ""
+		};
+		this.$.download.setShowing(video);
+		this.$.download.setCaption(captions[state]);
+		this.$.downloadStatus.setContent(notes[state]);
+		this.$.downloadStatus.setShowing(video && !!notes[state]);
+	},
+
+	downloadClick: function() {
+		var e = JF.downloads.get(this.item.Id);
+		if (!e || e.state === "failed") {
+			this.openOptions();
+		} else {
+			JF.downloads.remove(this.item.Id);
+		}
+	},
+
+	// Start from the player's last language choices and the last quality used.
+	openOptions: function() {
+		var item = this.item;
+		var tracks = JF.api.defaultTracks(item);
+		var audio = JF.api.streams(item, "Audio");
+		var subs = JF.api.streams(item, "Subtitle");
+		var audioItems = [{caption: "Default", value: "default"}];
+		for (var i = 0; i < audio.length; i++) {
+			audioItems.push({caption: audio[i].title, value: audio[i].index});
+		}
+		var subItems = [{caption: "Off", value: -1}];
+		for (i = 0; i < subs.length; i++) {
+			subItems.push({caption: subs[i].title, value: subs[i].index});
+		}
+		this.$.dlDialog.openAtCenter();
+		this.$.dlAudio.setItems(audioItems);
+		this.$.dlAudio.setValue(tracks.audioIndex === null ? "default" : tracks.audioIndex);
+		this.$.dlSubtitles.setItems(subItems);
+		this.$.dlSubtitles.setValue(tracks.subtitleIndex);
+		this.$.dlQuality.setValue(parseInt(localStorage.getItem("jf.downloadQuality"), 10) || 3000000);
+		this.showEstimate();
+	},
+
+	// The server sends at most this much; it often needs less.
+	showEstimate: function() {
+		var seconds = (this.item.RunTimeTicks || 0) / 10000000;
+		var mb = Math.round(seconds * (this.$.dlQuality.getValue() + 192000) / 8 / 1048576);
+		this.$.dlEstimate.setContent((mb ? "At most about " + mb + " MB. " : "") +
+			"Subtitles are drawn into the picture.");
+	},
+
+	closeOptions: function() {
+		this.$.dlDialog.close();
+	},
+
+	confirmDownload: function() {
+		var audio = this.$.dlAudio.getValue();
+		var quality = this.$.dlQuality.getValue();
+		localStorage.setItem("jf.downloadQuality", String(quality));
+		var parts = [];
+		var labels = [this.$.dlAudio, this.$.dlSubtitles, this.$.dlQuality];
+		var names = ["audio", "subtitles", "quality"];
+		for (var i = 0; i < labels.length; i++) {
+			var v = labels[i].getValue();
+			var items = labels[i].getItems();
+			for (var j = 0; j < items.length; j++) {
+				if (items[j].value === v) {
+					parts.push(names[i] + ": " + items[j].caption);
+				}
+			}
+		}
+		this.$.dlDialog.close();
+		JF.downloads.start(this.item, {
+			audioIndex: audio === "default" ? null : audio,
+			subtitleIndex: this.$.dlSubtitles.getValue(),
+			maxBitrate: quality,
+			description: parts.join(", ")
+		});
 	},
 
 	nameFor: function(item) {
