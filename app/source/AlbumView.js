@@ -25,6 +25,7 @@ enyo.kind({
 					{name: "name", className: "jf-detail-name"},
 					{name: "artist", className: "jf-album-artist"},
 					{name: "meta", className: "jf-detail-meta"},
+					{name: "downloadStatus", className: "jf-download-status", showing: false},
 					{kind: "HFlexBox", className: "jf-detail-buttons", components: [
 						{name: "play", kind: "Button", caption: "Play", className: "enyo-button-affirmative",
 							onclick: "playClick", disabled: true},
@@ -78,6 +79,13 @@ enyo.kind({
 				return;
 			}
 			if (!ok) {
+				// Offline: an album's downloaded tracks can still be played.
+				var local = JF.downloads.albumTracks(album.Id);
+				if (local.length) {
+					self.showTracks(local);
+					self.$.message.setContent("Can't reach the server: showing the downloaded tracks.");
+					return;
+				}
 				self.$.message.setContent("Could not load the tracks (" + (status || "no answer") + ").");
 				return;
 			}
@@ -121,6 +129,26 @@ enyo.kind({
 		this.$.play.setDisabled(!tracks.length);
 		this.$.shuffle.setDisabled(tracks.length < 2);
 		this.$.more.setDisabled(!tracks.length);
+		this.showDownloads();
+	},
+
+	// "Downloaded 12 of 15 tracks", kept up to date while downloads run.
+	showDownloads: function() {
+		if (!this.listening) {
+			this.listening = true;
+			JF.downloads.addListener(enyo.bind(this, "showDownloads"));
+		}
+		var tracks = this.tracks || [];
+		var c = JF.downloads.countFor(tracks);
+		var text = "";
+		if (c.pending) {
+			text = "Downloading: " + c.done + " of " + tracks.length + " tracks done.";
+		} else if (c.done) {
+			text = c.done === tracks.length ? "Downloaded: plays without a connection." :
+				"Downloaded " + c.done + " of " + tracks.length + " tracks.";
+		}
+		this.$.downloadStatus.setContent(text);
+		this.$.downloadStatus.setShowing(!!text);
 	},
 
 	// Files without track numbers come back sorted by name as text (1, 10, 11,
@@ -195,6 +223,13 @@ enyo.kind({
 			var fav = target.item.UserData && target.item.UserData.IsFavorite;
 			items.push({caption: fav ? "Remove from Favorites" : "Add to Favorites", value: fav ? "unfavorite" : "favorite"});
 		}
+		var c = JF.downloads.countFor(target.tracks);
+		if (c.done + c.pending < target.tracks.length) {
+			items.push({caption: target.tracks.length > 1 ? "Download" : "Download Track", value: "download"});
+		}
+		if (c.done + c.pending > 0) {
+			items.push({caption: target.tracks.length > 1 ? "Delete Downloads" : "Delete Download", value: "undownload"});
+		}
 		if (this.album.Type === "Playlist" && target.position !== undefined && target.item.PlaylistItemId) {
 			items.push({caption: "Remove from Playlist", value: "remove"});
 		}
@@ -229,6 +264,14 @@ enyo.kind({
 					}
 				}
 			});
+		} else if (action === "download") {
+			for (var i = 0; i < t.tracks.length; i++) {
+				JF.downloads.start(t.tracks[i]);
+			}
+		} else if (action === "undownload") {
+			for (var j = 0; j < t.tracks.length; j++) {
+				JF.downloads.remove(t.tracks[j].Id);
+			}
 		} else if (action === "remove") {
 			JF.api.removeFromPlaylist(this.album.Id, [t.item.PlaylistItemId], function(ok) {
 				if (ok) {

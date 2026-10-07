@@ -64,14 +64,10 @@ enyo.kind({
 			this.listening = true;
 			JF.downloads.addListener(enyo.bind(this, "showDownloads"));
 		}
-		var items = JF.downloads.items();
-		var key = "";
-		for (var i = 0; i < items.length; i++) {
-			key += items[i].Id + ":" + JF.downloads.get(items[i].Id).state + " ";
-		}
+		var key = JF.downloads.signature();
 		if (key !== this.downloadsKey) {
 			this.downloadsKey = key;
-			this.fill("downloads", items);
+			this.fill("downloads", JF.downloads.items());
 		}
 	},
 

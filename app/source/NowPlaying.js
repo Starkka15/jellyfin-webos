@@ -206,7 +206,7 @@ enyo.kind({
 		this.$.pauseButton.setCaption("Pause");
 		this.showPosition(startTicks);
 		var request = this.request = {};
-		JF.api.playbackInfo(track, {startTicks: startTicks}, function(info) {
+		this.findStream(track, startTicks, function(info) {
 			if (request !== self.request || !self.playing) {
 				return;
 			}
@@ -237,6 +237,17 @@ enyo.kind({
 				self.timer = setInterval(function() { self.tick(); }, 1000);
 			});
 		});
+	},
+
+	// A downloaded track plays from the tablet; otherwise ask the server.
+	findStream: function(track, startTicks, callback) {
+		var local = JF.downloads && JF.downloads.localFile(track.Id);
+		if (local) {
+			callback({method: "DirectPlay", url: "file://" + local, mediaSourceId: track.Id,
+				playSessionId: "local" + new Date().getTime().toString(16)});
+			return;
+		}
+		JF.api.playbackInfo(track, {startTicks: startTicks}, callback);
 	},
 
 	// Stop the current track and tell the server how far it got.

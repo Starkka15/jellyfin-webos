@@ -87,12 +87,61 @@ enyo.kind({
 		return e && e.state === "done" ? e.file : null;
 	},
 
+	// An album's own id finds the poster saved with any of its downloaded tracks.
 	localImage: function(id) {
 		var e = this.entries[id];
-		return e && e.poster ? e.poster : null;
+		if (e) {
+			return e.poster || null;
+		}
+		for (var k in this.entries) {
+			if (this.entries[k].item.AlbumId === id && this.entries[k].poster) {
+				return this.entries[k].poster;
+			}
+		}
+		return null;
+	},
+
+	// The downloaded tracks of an album, in disc and track order.
+	albumTracks: function(albumId) {
+		var out = [];
+		for (var k in this.entries) {
+			var e = this.entries[k];
+			if (e.item.AlbumId === albumId && e.state === "done") {
+				out.push(e.item);
+			}
+		}
+		out.sort(function(a, b) {
+			return ((a.ParentIndexNumber || 1) - (b.ParentIndexNumber || 1)) || ((a.IndexNumber || 0) - (b.IndexNumber || 0));
+		});
+		return out;
+	},
+
+	// How many of these tracks are downloaded, and how many are still coming.
+	countFor: function(tracks) {
+		var done = 0;
+		var pending = 0;
+		for (var i = 0; i < tracks.length; i++) {
+			var e = this.entries[tracks[i].Id];
+			if (e && e.state === "done") {
+				done++;
+			} else if (e && (e.state === "queued" || e.state === "downloading")) {
+				pending++;
+			}
+		}
+		return {done: done, pending: pending};
+	},
+
+	// Changes when a download is added, finishes or goes; not on progress.
+	signature: function() {
+		var key = "";
+		for (var k in this.entries) {
+			key += k + ":" + this.entries[k].state + " ";
+		}
+		return key;
 	},
 
 	// Items with a download, finished or not, newest first.
+	// For the home screen, newest first. Music shows as one tile per album.
 	items: function() {
 		var list = [];
 		for (var id in this.entries) {
@@ -100,8 +149,18 @@ enyo.kind({
 		}
 		list.sort(function(a, b) { return b.added - a.added; });
 		var out = [];
+		var albums = {};
 		for (var i = 0; i < list.length; i++) {
-			out.push(list[i].item);
+			var item = list[i].item;
+			if (item.MediaType === "Audio" && item.AlbumId) {
+				if (!albums[item.AlbumId]) {
+					albums[item.AlbumId] = true;
+					out.push({Id: item.AlbumId, Type: "MusicAlbum", Name: item.Album || "Album",
+						AlbumArtist: item.AlbumArtist, IsFolder: true});
+				}
+				continue;
+			}
+			out.push(item);
 		}
 		return out;
 	},
@@ -110,7 +169,8 @@ enyo.kind({
 	trim: function(item) {
 		var keep = ["Id", "Name", "Type", "MediaType", "SeriesName", "SeriesId", "SeasonId", "SeasonName",
 			"ParentIndexNumber", "IndexNumber", "RunTimeTicks", "ProductionYear", "OfficialRating", "Overview",
-			"ImageTags", "SeriesPrimaryImageTag", "UserData"];
+			"ImageTags", "SeriesPrimaryImageTag", "UserData",
+			"AlbumArtist", "Artists", "Album", "AlbumId", "AlbumPrimaryImageTag"];
 		var out = {};
 		for (var i = 0; i < keep.length; i++) {
 			if (item[keep[i]] !== undefined) {
@@ -177,8 +237,19 @@ enyo.kind({
 				}
 				JF.log("download " + e.id + " " + info.method);
 				e.starting = true;
-				self.$.dlSvc.call({target: info.url, targetDir: self.folder, targetFilename: e.id + ".mp4"});
+				self.$.dlSvc.call({target: info.url, targetDir: self.folder, targetFilename: e.id + self.extension(e, info)});
 			});
+	},
+
+	// Video is saved as .mp4 whatever is inside (see the top of this file); music
+	// keeps its own type, which the audio element goes by.
+	extension: function(e, info) {
+		if (e.item.MediaType !== "Audio") {
+			return ".mp4";
+		}
+		var m = /stream\.(\w+)/i.exec(info.url);
+		var type = m ? m[1].toLowerCase() : "mp3";
+		return "." + ({mp3: "mp3", m4a: "m4a", mp4: "m4a", aac: "m4a", wav: "wav"}[type] || "mp3");
 	},
 
 	// The poster follows the video, never alongside another download: the download

@@ -50,7 +50,7 @@ The rest are stock webOS 3 features the app does not use yet.
   apps see them too).
 - [x] **Browse by category.** Artists (today they are only reachable through search),
   genres, and perhaps years, next to the album grid; an artist page with their albums.
-- [ ] **Downloads for music.** Download an album, playlist or track to play offline,
+- [x] **Downloads for music.** Download an album, playlist or track to play offline,
   as for video; downloaded albums in the home screen's Downloads row.
 - [ ] **Player niceties:**
   - [x] Repeat: off, the whole list, or one track

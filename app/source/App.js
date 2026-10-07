@@ -69,6 +69,20 @@ enyo.kind({
 	// Test playback does not report to the server, so it leaves the watch history alone.
 	testLaunch: function(params) {
 		var self = this;
+		// {downloadAlbum: '<id>'} downloads every track, as the More menu's Download does.
+		if (params.downloadAlbum) {
+			JF.api.item(params.downloadAlbum, function(ok, album) {
+				if (ok && album) {
+					JF.api.albumTracks(album, function(ok2, data) {
+						var tracks = (ok2 && data && data.Items) || [];
+						for (var i = 0; i < tracks.length; i++) {
+							JF.downloads.start(tracks[i]);
+						}
+					});
+				}
+			});
+			return;
+		}
 		// {playAlbum: '<id>', shuffle: true, nowPlaying: true} plays an album (or playlist)
 		// and can open the Now Playing screen.
 		if (params.playAlbum) {

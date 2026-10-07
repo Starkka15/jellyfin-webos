@@ -11,9 +11,13 @@ A Jellyfin client for the HP TouchPad, written in Enyo 1 (the TouchPad's own fra
 - Search across movies, shows, episodes, albums and tracks
 - Full-screen video player with seeking, ±30 s, audio track and subtitle choice
 - Resume where you left off, and play the next episode automatically
-- Download movies and episodes to watch offline, choosing audio, subtitles and quality
+- Download movies and episodes to watch offline, choosing audio, subtitles and quality; download
+  albums, playlists and tracks to listen offline
 - Music player that keeps playing while you browse, with a Now Playing bar, controls in the
   notification area, and Bluetooth and headset buttons
+- Music by album, artist, genre or playlist; shuffle and repeat; a Now Playing screen with an
+  editable queue; Play Next, Add to Queue, playlists, favorites, Instant Mix, and Recently and
+  Most Played lists
 - Playback progress, watched status and play counts reported to the server
 
 ## Screenshots
