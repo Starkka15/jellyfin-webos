@@ -8,5 +8,13 @@
 	"icon": "images/icon.png",
 	"splashicon": "images/icon-256x256.png",
 	"miniicon": "images/miniicon.png",
-	"uiRevision": 2
+	"uiRevision": 2,
+	"universalSearch": {
+		"search": {
+			"displayName": "Jellyfin",
+			"url": "com.stark.jellyfin",
+			"launchParam": "query"
+		}
+	},
+	"keywords": ["Jellyfin", "Movies", "TV Shows"]
 }

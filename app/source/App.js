@@ -76,13 +76,26 @@ enyo.kind({
 				JF.api.chooseAddress(function() {
 					self.showHome();
 					self.$.nowPlaying.restoreState();
-					self.testLaunch(enyo.windowParams || {});
+					if (!self.justType(enyo.windowParams || {})) {
+						self.testLaunch(enyo.windowParams || {});
+					}
 				});
 			} else {
 				this.$.pane.selectViewByName("login");
 				this.$.login.searchServers();
 			}
 		}
+	},
+
+	// Just Type's "Search Using: Jellyfin" (appinfo.json, universalSearch) launches
+	// the app with {query: "what was typed"}, or sends it to the open app.
+	justType: function(params) {
+		var term = String(params.query || "").replace(/^\s+|\s+$/g, "");
+		if (!term) {
+			return false;
+		}
+		this.search(this, term);
+		return true;
 	},
 
 	// For testing from a PC, with no one tapping the screen:
@@ -398,6 +411,9 @@ enyo.kind({
 	// The dashboard's buttons arrive as window params.
 	windowParamsChanged: function() {
 		var p = enyo.windowParams || {};
+		if (JF.api.token) {
+			this.justType(p);
+		}
 		if (p.musicCommand) {
 			this.$.nowPlaying.command(p.musicCommand);
 		}

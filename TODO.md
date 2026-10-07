@@ -36,8 +36,8 @@ The rest are stock webOS 3 features the app does not use yet.
   help video much: most MKV files are H.264 High profile, which the TouchPad's
   decoder cannot play whatever the container.)
 
-- [ ] **Just Type search.** Offer "Search Jellyfin" from the system search bar.
-  Stock webOS; the App Catalog can list apps that provide it.
+- [x] **Just Type search.** Done: type in card view or the launcher and pick Jellyfin under
+  Search Using. Off until turned on in Just Type's preferences, as for any app.
 
 - [ ] **Exhibition mode.** On a Touchstone dock, show what is playing or a slideshow of
   library artwork. Stock webOS.

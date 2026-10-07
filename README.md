@@ -11,7 +11,8 @@ A Jellyfin client for the HP TouchPad, written in Enyo 1 (the TouchPad's own fra
 - Movies and shows by Unwatched, Favorites, Collections, Genres or Studios, sorted by name, date
   added, release date, rating, running time or last watched; add favorites from any movie, episode
   or show
-- Search across movies, shows, episodes, albums and tracks
+- Search across movies, shows, episodes, albums and tracks, also from Just Type (turn Jellyfin on
+  under Just Type's Search Using preferences)
 - Full-screen video player with seeking, ±30 s, audio track and subtitle choice
 - Resume where you left off, and play the next episode automatically
 - Download movies, episodes or whole seasons to watch offline, choosing audio, subtitles and quality;
