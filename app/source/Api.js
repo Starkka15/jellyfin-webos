@@ -374,6 +374,22 @@ JF.api = {
 			function(ok, data) { callback(ok, data); });
 	},
 
+	favoriteCaption: function(item) {
+		return item.UserData && item.UserData.IsFavorite ? "Remove from Favorites" : "Add to Favorites";
+	},
+
+	// Flip an item's favorite mark and keep the record in step. callback(ok)
+	toggleFavorite: function(item, callback) {
+		var on = !(item.UserData && item.UserData.IsFavorite);
+		this.setFavorite(item.Id, on, function(ok) {
+			if (ok) {
+				item.UserData = item.UserData || {};
+				item.UserData.IsFavorite = on;
+			}
+			callback(ok);
+		});
+	},
+
 	// Jellyfin's "more like this" playlist. callback(ok, {Items: [...]})
 	instantMix: function(id, callback) {
 		this.get("/Items/" + id + "/InstantMix", {userId: this.userId, limit: 100}, callback);
@@ -412,15 +428,47 @@ JF.api = {
 				fields: "PrimaryImageAspectRatio"}, wrap);
 			return;
 		}
+		var page = {userId: this.userId, startIndex: startIndex, limit: limit, sortBy: "SortName",
+			sortOrder: "Ascending", fields: "PrimaryImageAspectRatio"};
+		// A movie or show library, by the tab chosen in BrowseView: everything,
+		// unwatched, favorites, collections, genres or studios.
+		var type = parent.CollectionType;
+		if (type === "movies" || type === "tvshows") {
+			var category = parent.category || "all";
+			if (category === "genres" || category === "studios") {
+				page.parentId = parent.Id;
+				this.get(category === "genres" ? "/Genres" : "/Studios", page, wrap);
+				return;
+			}
+			if (category === "collections") {
+				// Collections live outside the movie library, like playlists.
+				page.includeItemTypes = "BoxSet";
+				page.recursive = true;
+				this.get("/Items", page, wrap);
+				return;
+			}
+			this.get("/Items", this.sorted(type, {userId: this.userId, parentId: parent.Id, recursive: true,
+				includeItemTypes: type === "movies" ? "Movie" : "Series", startIndex: startIndex, limit: limit,
+				fields: "PrimaryImageAspectRatio", isPlayed: category === "unwatched" ? false : undefined,
+				isFavorite: category === "favorites" ? true : undefined}), wrap);
+			return;
+		}
+		// A movie or show genre or studio: what it has in the library it came from.
+		if (parent.Type === "Genre" || parent.Type === "Studio") {
+			var list = {userId: this.userId, parentId: parent.libraryId, recursive: true,
+				includeItemTypes: parent.libraryType === "tvshows" ? "Series" : "Movie", startIndex: startIndex,
+				limit: limit, fields: "PrimaryImageAspectRatio"};
+			list[parent.Type === "Genre" ? "genreIds" : "studioIds"] = parent.Id;
+			this.get("/Items", this.sorted(parent.libraryType, list), wrap);
+			return;
+		}
 		// The music library, by the tab chosen in BrowseView: albums (below),
 		// artists, genres or playlists.
-		if (parent.CollectionType === "music" && parent.musicCategory && parent.musicCategory !== "albums") {
-			var page = {userId: this.userId, startIndex: startIndex, limit: limit, sortBy: "SortName",
-				sortOrder: "Ascending", fields: "PrimaryImageAspectRatio"};
-			if (parent.musicCategory === "artists") {
+		if (type === "music" && parent.category && parent.category !== "albums") {
+			if (parent.category === "artists") {
 				page.parentId = parent.Id;
 				this.get("/Artists/AlbumArtists", page, wrap);
-			} else if (parent.musicCategory === "genres") {
+			} else if (parent.category === "genres") {
 				page.parentId = parent.Id;
 				this.get("/Genres", page, wrap);
 			} else {
@@ -441,7 +489,7 @@ JF.api = {
 				albums.sortOrder = "Descending,Ascending";
 			} else {
 				albums.genreIds = parent.Id;
-				albums.parentId = parent.musicLibraryId;
+				albums.parentId = parent.libraryId;
 				albums.sortBy = "SortName";
 			}
 			this.get("/Items", albums, wrap);
@@ -465,21 +513,66 @@ JF.api = {
 			sortOrder: "Ascending",
 			fields: "PrimaryImageAspectRatio"
 		};
-		// A movie or show library is shown flat, whatever its folders look like.
-		if (parent.CollectionType === "movies") {
-			params.recursive = true;
-			params.includeItemTypes = "Movie";
-			params.sortBy = "SortName";
-		} else if (parent.CollectionType === "music") {
+		// The music library is shown flat, whatever its folders look like.
+		if (type === "music") {
 			params.recursive = true;
 			params.includeItemTypes = "MusicAlbum";
 			params.sortBy = "SortName";
-		} else if (parent.CollectionType === "tvshows") {
-			params.recursive = true;
-			params.includeItemTypes = "Series";
-			params.sortBy = "SortName";
+		} else if (parent.Type === "BoxSet") {
+			params.sortBy = "ProductionYear,SortName";  // a collection in the order it came out
 		}
 		this.get("/Items", params, wrap);
+	},
+
+	// ---- sorting movie and show lists --------------------------------------
+
+	// [sortBy, caption, kind]; the kind names the two directions (sortOrders).
+	sortChoices: {
+		movies: [["SortName", "Name", "name"], ["DateCreated", "Date Added", "date"],
+			["PremiereDate", "Release Date", "date"], ["CommunityRating", "Rating", "number"],
+			["CriticRating", "Critics' Rating", "number"], ["Runtime", "Running Time", "length"],
+			["DatePlayed", "Last Watched", "date"]],
+		tvshows: [["SortName", "Name", "name"], ["DateCreated", "Date Added", "date"],
+			["DateLastContentAdded", "Newest Episode", "date"], ["PremiereDate", "First Aired", "date"],
+			["CommunityRating", "Rating", "number"], ["DatePlayed", "Last Watched", "date"]]
+	},
+	// Captions for Ascending and Descending.
+	sortOrders: {
+		name: ["A to Z", "Z to A"],
+		date: ["Oldest First", "Newest First"],
+		number: ["Lowest First", "Highest First"],
+		length: ["Shortest First", "Longest First"]
+	},
+
+	// The sort chosen for this kind of library: {by, order, choice}. Kept on the device.
+	sortFor: function(type) {
+		var saved = null;
+		try {
+			saved = enyo.json.parse(localStorage.getItem("jf.sort." + type) || "null");
+		} catch (e) {
+			saved = null;
+		}
+		var choices = this.sortChoices[type] || this.sortChoices.movies;
+		for (var i = 0; saved && i < choices.length; i++) {
+			if (choices[i][0] === saved.by) {
+				return {by: saved.by, order: saved.order === "Descending" ? "Descending" : "Ascending", choice: choices[i]};
+			}
+		}
+		return {by: "SortName", order: "Ascending", choice: choices[0]};
+	},
+
+	// Picking a new field starts in its natural direction: names A to Z, the rest newest or highest first.
+	setSort: function(type, by, order) {
+		order = order || (by === "SortName" ? "Ascending" : "Descending");
+		localStorage.setItem("jf.sort." + type, enyo.json.stringify({by: by, order: order}));
+	},
+
+	// Add the chosen sort to a request. Ties fall back to the name.
+	sorted: function(type, params) {
+		var sort = this.sortFor(type);
+		params.sortBy = sort.by === "SortName" ? "SortName" : sort.by + ",SortName";
+		params.sortOrder = sort.by === "SortName" ? sort.order : sort.order + ",Ascending";
+		return params;
 	},
 
 	// ---- asking the server how to play something ---------------------------
@@ -618,7 +711,8 @@ JF.api = {
 	isFolder: function(item) {
 		return !!item.IsFolder || item.Type === "Series" || item.Type === "Season" ||
 			item.Type === "CollectionFolder" || item.Type === "BoxSet" || item.Type === "Folder" ||
-			item.Type === "UserView" || item.Type === "MusicArtist" || item.Type === "MusicGenre";
+			item.Type === "UserView" || item.Type === "MusicArtist" || item.Type === "MusicGenre" ||
+			item.Type === "Genre" || item.Type === "Studio";
 	},
 
 	// The audio and subtitle tracks to start with, from the languages last chosen

@@ -120,9 +120,25 @@ enyo.kind({
 			JF.api.item(params.open, function(ok, item) {
 				if (ok && item) {
 					self.lastAction = 0;
-					// {open: "<music library id>", tab: "artists"} picks the music tab.
+					// {open: "<library id>", tab: "artists"} picks the tab.
+					// {..., sort: "DateCreated", order: "Ascending"} picks the sort first;
+					// {..., sortMenu: true} opens the sort menu.
 					if (params.tab) {
-						item.musicCategory = params.tab;
+						item.category = params.tab;
+					}
+					if (params.sort) {
+						JF.api.setSort(item.CollectionType, params.sort, params.order);
+					}
+					// {..., tile: 3} then opens the fourth tile in the grid.
+					if (params.tile !== undefined) {
+						setTimeout(function() {
+							var tiles = self.$.browse.$.grid.getControls();
+							if (tiles[params.tile]) {
+								self.$.browse.tileClick(self, tiles[params.tile].item);
+							}						}, 4000);
+					}
+					if (params.sortMenu) {
+						setTimeout(function() { self.$.browse.sortClick(); }, 3000);
 					}
 					self.openItem(self, item);
 					// {open: '<album id>', menu: true} also opens its More menu.

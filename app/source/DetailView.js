@@ -27,7 +27,8 @@ enyo.kind({
 					]},
 					// A row of its own: a movie's Resume, Play and Watched already fill the first.
 					{kind: "HFlexBox", className: "jf-detail-buttons", components: [
-						{name: "download", kind: "Button", caption: "Download", onclick: "downloadClick", showing: false}
+						{name: "download", kind: "Button", caption: "Download", onclick: "downloadClick", showing: false},
+						{name: "favorite", kind: "Button", caption: "Add to Favorites", onclick: "favoriteClick"}
 					]},
 					{name: "downloadStatus", className: "jf-download-status", showing: false},
 					{name: "note", className: "jf-message"},
@@ -92,6 +93,7 @@ enyo.kind({
 		this.$.resume.setCaption("Resume at " + JF.api.ticksToText(position));
 		this.$.watched.setShowing(video);
 		this.$.watched.setCaption(item.UserData && item.UserData.Played ? "Mark Unwatched" : "Mark Watched");
+		this.$.favorite.setCaption(JF.api.favoriteCaption(item));
 		this.$.note.setContent(playable ? "" : "This app cannot play this kind of item yet.");
 		this.showDownload();
 	},
@@ -236,6 +238,15 @@ enyo.kind({
 			if (ok && self.item === item) {
 				self.open(item);  // fetch the record again and redraw
 			}
+		});
+	},
+
+	favoriteClick: function() {
+		var self = this;
+		this.$.favorite.setDisabled(true);
+		JF.api.toggleFavorite(this.item, function() {
+			self.$.favorite.setDisabled(false);
+			self.$.favorite.setCaption(JF.api.favoriteCaption(self.item));
 		});
 	},
 

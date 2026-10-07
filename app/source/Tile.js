@@ -11,7 +11,10 @@ enyo.kind({
 	},
 	components: [
 		{name: "art", className: "jf-tile-art", components: [
+			// The letter sits under the picture and shows where it is missing or blank:
+			// the server makes a transparent picture for a genre with no artwork.
 			{name: "letter", className: "jf-tile-letter"},
+			{name: "pic", className: "jf-tile-pic"},
 			{name: "badge", className: "jf-tile-badge", showing: false},
 			{name: "progress", className: "jf-tile-progress", showing: false, components: [
 				{name: "progressBar", className: "jf-tile-progress-bar"}
@@ -35,13 +38,8 @@ enyo.kind({
 			this.addClass("jf-tile-square");
 		}
 		var url = JF.api.imageUrl(item, 330);
-		if (url) {
-			this.$.art.applyStyle("background-image", "url('" + url + "')");
-			this.$.letter.setContent("");
-		} else {
-			// No artwork: show the first letter on a plain block.
-			this.$.letter.setContent((item.Name || "?").charAt(0).toUpperCase());
-		}
+		this.$.pic.applyStyle("background-image", url ? "url('" + url + "')" : "none");
+		this.$.letter.setContent((item.Name || "?").charAt(0).toUpperCase());
 		// Watched state: a tick when seen, a count of unseen episodes on a
 		// series, and a bar when part-way through.
 		var data = item.UserData || {};
@@ -73,7 +71,7 @@ enyo.kind({
 			return item.AlbumArtist || (item.Artists || []).join(", ");
 		}
 		// An artist's "year" is a birth or founding year; it means nothing on a tile.
-		if (item.ProductionYear && item.Type !== "MusicArtist" && item.Type !== "MusicGenre") {
+		if (item.ProductionYear && !/^(MusicArtist|MusicGenre|Genre|Studio)$/.test(item.Type)) {
 			return String(item.ProductionYear);
 		}
 		return "";

@@ -63,7 +63,8 @@ The rest are stock webOS 3 features the app does not use yet.
 
 ## Missing features
 
-- [ ] Collections
+- [x] Collections, as a tab in movie libraries
+- [x] Sort and categories for movies and shows: Unwatched, Favorites, Genres, Studios
 - [ ] Live TV, for servers that have it
 
 ## Known issues

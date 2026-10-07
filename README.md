@@ -8,6 +8,9 @@ A Jellyfin client for the HP TouchPad, written in Enyo 1 (the TouchPad's own fra
 - Uses the server's home address when you are home and its `https` address when you are out
 - Home screen with Continue Watching, Next Up, Latest and your libraries
 - Browse movies, shows (series → seasons → episodes) and music (albums)
+- Movies and shows by Unwatched, Favorites, Collections, Genres or Studios, sorted by name, date
+  added, release date, rating, running time or last watched; add favorites from any movie, episode
+  or show
 - Search across movies, shows, episodes, albums and tracks
 - Full-screen video player with seeking, ±30 s, audio track and subtitle choice
 - Resume where you left off, and play the next episode automatically
@@ -96,7 +99,6 @@ paths at the top first).
 ## Known issues
 
 - After a seek or track change, a converted stream takes a few seconds to start (downloads seek instantly).
-- Music artists are only reachable through search; the music library lists albums.
 
 ## License
 

@@ -102,6 +102,15 @@ body {
 	width: 150px;
 	height: 220px;
 	background-color: #2a3142;
+	-webkit-border-radius: 6px;
+	border-radius: 6px;
+}
+.jf-tile-pic {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
 	background-position: center center;
 	background-repeat: no-repeat;
 	-webkit-background-size: cover;
@@ -286,6 +295,9 @@ body {
 /* Album covers are square. */
 .jf-tile-square .jf-tile-art {
 	height: 150px;
+}
+.jf-tile-square .jf-tile-letter {
+	line-height: 150px;
 }
 .jf-album-art {
 	width: 300px;
@@ -539,6 +551,11 @@ body {
 /* Music library tabs: Albums, Artists, Genres, Playlists. */
 .jf-tabs {
 	margin: 12px 24px 0;
+}
+
+/* Sets the directions apart from the fields in the sort menu. */
+.jf-menu-gap {
+	border-top: 2px solid #b8bcc4;
 }
 
 /* ---- Now Playing screen ------------------------------------------------- */
