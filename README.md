@@ -107,6 +107,11 @@ paths at the top first).
 ## Known issues
 
 - After a seek or track change, a converted stream takes a few seconds to start (downloads seek instantly).
+- The phone layout is experimental: checked at Pre3 size in a desktop preview, not yet on a phone.
+  A tester reports that video fails on a Pre3 (error 2); music works.
+- The wired headset button and unplug-to-pause are untested; the notification-area and
+  Bluetooth controls are tested.
+- No Live TV yet.
 
 ## License
 

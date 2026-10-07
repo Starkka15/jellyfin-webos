@@ -7,24 +7,24 @@ The rest are stock webOS 3 features the app does not use yet.
 
 ## Most worth doing
 
-- [x] **Downloads for offline viewing.** Done (after 0.3.0): Download on a movie or episode
+- [x] **Downloads for offline viewing.** Done in 0.4.0: Download on a movie or episode
   page, with a choice of audio, subtitles and quality; plays offline with instant
   seeking; Downloads row on the home screen.
   - [x] Download a whole season at once (all or unwatched episodes, with a quality choice)
   - [x] Report progress watched offline to the server when back online
   - [x] Warn before a download that would not fit in the free space
 
-- [x] **Music controls outside the app.** Done (after 0.3.0), following HP's Music app:
+- [x] **Music controls outside the app.** Done in 0.4.0, following HP's Music app:
   a dashboard in the notification area while music plays in the background
   (previous, play/pause, next; tap the title to return), Bluetooth (AVRCP) buttons,
   the wired headset button (one click play/pause, two clicks next), and pausing
   music or video when headphones are unplugged.
 
-- [x] **Find servers on the local network.** Done (after 0.3.0): the sign-in screen
+- [x] **Find servers on the local network.** Done in 0.4.0: the sign-in screen
   lists servers that answer Jellyfin's discovery (Auto Discovery must be on in the
   server's Networking settings, the default). (Quick Connect was considered and
   dropped: it needs a second device to approve the sign-in.)
-- [x] **Home or away.** Done (after 0.3.0): when the server signed in to over https
+- [x] **Home or away.** Done in 0.4.0: when the server signed in to over https
   is also found on the home network, the app remembers its home address and uses
   it whenever it answers (no relay, faster seeking), falling back to https when away.
 
@@ -66,7 +66,11 @@ The rest are stock webOS 3 features the app does not use yet.
 
 - [x] Collections, as a tab in movie libraries
 - [x] Sort and categories for movies and shows: Unwatched, Favorites, Genres, Studios
-- [ ] Live TV, for servers that have it
+
+## Later
+
+- [ ] Live TV, for servers that have it. Left out of 0.4.0: there was no tuner or IPTV
+  source to build and test it against.
 
 ## Known issues
 
