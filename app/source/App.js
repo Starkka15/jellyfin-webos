@@ -51,6 +51,7 @@ enyo.kind({
 				// Home address or signed-in address, whichever answers (see chooseAddress).
 				JF.api.chooseAddress(function() {
 					self.showHome();
+					self.$.nowPlaying.restoreState();
 					self.testLaunch(enyo.windowParams || {});
 				});
 			} else {
@@ -362,7 +363,7 @@ enyo.kind({
 	},
 
 	unload: function() {
-		this.$.nowPlaying.stopAll();
+		this.$.nowPlaying.shutdown();
 		this.$.player.stopStream();
 	}
 });

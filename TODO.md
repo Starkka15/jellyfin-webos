@@ -59,7 +59,7 @@ The rest are stock webOS 3 features the app does not use yet.
   - [x] Favorite tracks and albums (Jellyfin's favorites), and a Favorite Songs list
   - [x] Recently played and most played, from the server's history
   - [x] Instant Mix: the server's "more like this" playlist from a track, album or artist
-  - [ ] Remember the queue and position when the app is closed
+  - [x] Remember the queue and position when the app is closed
 
 ## Missing features
 

@@ -56,6 +56,9 @@ enyo.kind({
 	},
 
 	notify: function(what) {
+		if (what === "track" || what === "queue") {
+			this.saveState();
+		}
 		var list = this.listeners || [];
 		for (var i = 0; i < list.length; i++) {
 			list[i](what);
@@ -254,6 +257,13 @@ enyo.kind({
 		}
 	},
 
+	// The app is closing: keep the queue for next time, but stop the sound.
+	shutdown: function() {
+		this.saveState();
+		this.endTrack();
+		this.closeDashboard();
+	},
+
 	// Stop and hide. Called when a video starts, too.
 	stopAll: function() {
 		this.endTrack();
@@ -282,6 +292,9 @@ enyo.kind({
 	// ---- position --------------------------------------------------------
 
 	positionTicks: function() {
+		if (!this.playing && this.resumeTicks) {
+			return this.resumeTicks;  // a restored queue, not started yet
+		}
 		var node = this.$.audio.hasNode();
 		var t = node && !this.pendingSeek ? node.currentTime || 0 : 0;
 		if (this.pendingSeek) {
@@ -306,6 +319,7 @@ enyo.kind({
 		}
 		this.notify("position");
 		if (this.ticks % 10 === 0) {
+			this.saveState();
 			this.tellServer("/Sessions/Playing/Progress");
 		}
 		if (this.relayed && this.ticks % 30 === 0) {
@@ -339,9 +353,11 @@ enyo.kind({
 			return;
 		}
 		if (!this.playing) {
-			// After a failed track: try it again.
+			// A queue restored at start-up, or a failed track: play it from where it was.
 			if (this.queue) {
-				this.playIndex(this.index, 0);
+				var from = this.resumeTicks || 0;
+				this.resumeTicks = 0;
+				this.playIndex(this.index, from);
 			}
 			return;
 		}
@@ -409,6 +425,80 @@ enyo.kind({
 		this.$.artist.setContent(text);
 		this.$.pauseButton.setCaption("Play");
 		this.updateDashboard();
+	},
+
+	// ---- remembering the queue ---------------------------------------------------
+	// The queue, track, position, shuffle and repeat are kept in localStorage, so
+	// the app opens where the music was, paused. Stop forgets them.
+
+	saveState: function() {
+		if (!this.queue) {
+			localStorage.removeItem("jf.music");
+			return;
+		}
+		var keep = ["Id", "Name", "Type", "MediaType", "AlbumArtist", "Artists", "Album", "AlbumId",
+			"AlbumPrimaryImageTag", "ImageTags", "RunTimeTicks", "IndexNumber", "ParentIndexNumber", "UserData"];
+		var trim = function(list) {
+			var out = [];
+			for (var i = 0; list && i < list.length; i++) {
+				var t = {};
+				for (var k = 0; k < keep.length; k++) {
+					if (list[i][keep[k]] !== undefined) {
+						t[keep[k]] = list[i][keep[k]];
+					}
+				}
+				out.push(t);
+			}
+			return out;
+		};
+		try {
+			localStorage.setItem("jf.music", enyo.json.stringify({
+				queue: trim(this.queue), index: this.index, position: this.queue[this.index] ? this.positionTicks() : 0,
+				shuffled: !!this.shuffled, original: this.original ? trim(this.original) : null, repeat: this.repeat
+			}));
+		} catch (e) {
+			JF.log("music: could not save the queue: " + e);
+		}
+	},
+
+	// Put the saved queue back, paused; Play picks up where it was.
+	restoreState: function() {
+		var s = null;
+		try {
+			s = enyo.json.parse(localStorage.getItem("jf.music") || "null");
+		} catch (e) {}
+		if (!s || !s.queue || !s.queue.length || this.queue) {
+			return;
+		}
+		// The original order shares track objects with the queue, as it does live.
+		var byId = {};
+		for (var i = 0; i < s.queue.length; i++) {
+			byId[s.queue[i].Id] = s.queue[i];
+		}
+		var original = null;
+		if (s.original) {
+			original = [];
+			for (i = 0; i < s.original.length; i++) {
+				original.push(byId[s.original[i].Id] || s.original[i]);
+			}
+		}
+		this.queue = s.queue;
+		this.original = original;
+		this.shuffled = !!s.shuffled;
+		this.repeat = s.repeat || "off";
+		this.index = Math.min(s.index || 0, s.queue.length - 1);
+		this.resumeTicks = s.position || 0;
+		var track = this.item = this.queue[this.index];
+		this.$.title.setContent(track.Name || "");
+		this.$.artist.setContent(track.AlbumArtist || (track.Artists || []).join(", ") || track.Album || "");
+		var url = JF.api.imageUrl(track, 120);
+		this.$.art.applyStyle("background-image", url ? "url('" + url + "')" : "none");
+		this.$.pauseButton.setCaption("Play");
+		this.lastTicks = this.resumeTicks;
+		this.showPosition(this.resumeTicks);
+		this.setShowing(true);
+		JF.log("music: restored the queue at " + track.Name);
+		this.notify("track");
 	},
 
 	// ---- control from outside the app ---------------------------------------
