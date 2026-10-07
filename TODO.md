@@ -50,3 +50,5 @@ The rest are stock webOS 3 features the app does not use yet.
 
 - [ ] After a seek or track change, a converted stream takes a few seconds to start.
 - [ ] A tap sometimes arrives twice; a 700 ms repeat filter covers it, cause unknown.
+- [ ] Wired headset button and unplug-to-pause are untested (no wired headphones to hand);
+  the dashboard and Bluetooth buttons are tested.
