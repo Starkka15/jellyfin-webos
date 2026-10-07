@@ -10,9 +10,9 @@ The rest are stock webOS 3 features the app does not use yet.
 - [x] **Downloads for offline viewing.** Done (after 0.3.0): Download on a movie or episode
   page, with a choice of audio, subtitles and quality; plays offline with instant
   seeking; Downloads row on the home screen.
-  - [ ] Download a whole season at once
-  - [ ] Report progress watched offline to the server when back online
-  - [ ] Warn before a download that would not fit in the free space
+  - [x] Download a whole season at once (all or unwatched episodes, with a quality choice)
+  - [x] Report progress watched offline to the server when back online
+  - [x] Warn before a download that would not fit in the free space
 
 - [x] **Music controls outside the app.** Done (after 0.3.0), following HP's Music app:
   a dashboard in the notification area while music plays in the background

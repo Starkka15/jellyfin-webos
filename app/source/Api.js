@@ -65,9 +65,11 @@ JF.api = {
 	chooseAddress: function(callback) {
 		var self = this;
 		this.lastChoice = new Date().getTime();
+		// Either way, send anything watched while there was no connection.
 		if (!this.homeUrl || this.homeUrl === this.signedInUrl) {
 			this.baseUrl = this.signedInUrl;
 			callback();
+			this.syncPending();
 			this.learnHomeAddress();
 			return;
 		}
@@ -75,6 +77,7 @@ JF.api = {
 			self.baseUrl = ok ? self.homeUrl : self.signedInUrl;
 			JF.log("using " + (ok ? "the home address " : "the signed-in address ") + self.baseUrl);
 			callback();
+			self.syncPending();
 			if (!ok) {
 				self.learnHomeAddress();
 			}
@@ -419,6 +422,102 @@ JF.api = {
 	},
 
 	// Mark an item watched or unwatched. callback(ok)
+	// ---- progress watched without a connection ------------------------------
+
+	// Tell the server about playback (/Sessions/Playing...). A report that does not
+	// get through (a download watched with no connection) is kept, one per item,
+	// and sent by syncPending once the server answers again.
+	report: function(path, body, runTimeTicks) {
+		var self = this;
+		this.post(path, body, function(ok, data, status) {
+			if (ok) {
+				self.forgetPending(body.ItemId);
+				self.syncPending();
+			} else if (!status) {
+				self.keepPending(body.ItemId, body.PositionTicks || 0, runTimeTicks || 0);
+			}
+		});
+	},
+
+	pending: function() {
+		try {
+			return enyo.json.parse(localStorage.getItem("jf.pendingProgress") || "{}") || {};
+		} catch (e) {
+			return {};
+		}
+	},
+
+	keepPending: function(id, ticks, runTimeTicks) {
+		var all = this.pending();
+		all[id] = {ticks: ticks, runTime: runTimeTicks, at: new Date().getTime()};
+		localStorage.setItem("jf.pendingProgress", enyo.json.stringify(all));
+	},
+
+	forgetPending: function(id) {
+		var all = this.pending();
+		if (all[id]) {
+			delete all[id];
+			localStorage.setItem("jf.pendingProgress", enyo.json.stringify(all));
+		}
+	},
+
+	// Send what was watched offline: past 90% (the server's own line) marks it
+	// played, anything less sets the resume point. An item played somewhere else
+	// since then is left as the server has it.
+	syncPending: function() {
+		var self = this;
+		var all = this.pending();
+		var ids = [];
+		for (var id in all) {
+			ids.push(id);
+		}
+		if (!ids.length || this.syncing || !this.token) {
+			return;
+		}
+		this.syncing = true;
+		var next = function() {
+			var id = ids.shift();
+			if (!id) {
+				self.syncing = false;
+				return;
+			}
+			var p = all[id];
+			var when = new Date(p.at).toISOString();
+			self.get("/UserItems/" + id + "/UserData", {userId: self.userId}, function(ok, data, status) {
+				if (!ok) {
+					if (status) {
+						self.forgetPending(id);  // gone from the server, or not allowed
+					}
+					next();
+					return;
+				}
+				var serverTime = data && data.LastPlayedDate ? new Date(data.LastPlayedDate).getTime() : 0;
+				if (serverTime > p.at) {
+					JF.log("offline progress for " + id + " is older than the server's; dropped");
+					self.forgetPending(id);
+					next();
+					return;
+				}
+				var done = function(sent) {
+					JF.log("offline progress for " + id + (sent ? " sent" : " not sent"));
+					if (sent) {
+						self.forgetPending(id);
+					}
+					next();
+				};
+				if (p.runTime && p.ticks >= p.runTime * 0.9) {
+					self.request("POST", "/UserPlayedItems/" + id, {userId: self.userId, datePlayed: when}, null,
+						function(sent) { done(sent); });
+				} else {
+					self.request("POST", "/UserItems/" + id + "/UserData", {userId: self.userId}, {
+						PlaybackPositionTicks: p.ticks, LastPlayedDate: when
+					}, function(sent) { done(sent); });
+				}
+			});
+		};
+		next();
+	},
+
 	setPlayed: function(id, played, callback) {
 		this.request(played ? "POST" : "DELETE", "/UserPlayedItems/" + id, {userId: this.userId}, null,
 			function(ok) { callback(ok); });

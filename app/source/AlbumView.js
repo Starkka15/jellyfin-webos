@@ -265,9 +265,11 @@ enyo.kind({
 				}
 			});
 		} else if (action === "download") {
+			var list = [];
 			for (var i = 0; i < t.tracks.length; i++) {
-				JF.downloads.start(t.tracks[i]);
+				list.push({item: t.tracks[i]});
 			}
+			JF.downloads.startAll(list);  // checks the free space first
 		} else if (action === "undownload") {
 			for (var j = 0; j < t.tracks.length; j++) {
 				JF.downloads.remove(t.tracks[j].Id);

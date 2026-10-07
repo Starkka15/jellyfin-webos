@@ -25,6 +25,15 @@ enyo.kind({
 		// Music keeps playing while browsing; its bar sits under every screen.
 		{name: "nowPlaying", kind: "JF.NowPlaying", onOpen: "openNowPlaying"},
 		{name: "relay", kind: "JF.Relay"},
+		// A yes-or-no question any screen can ask through JF.confirm.
+		{name: "confirmDialog", kind: "ModalDialog", lazy: false, components: [
+			{name: "confirmText", className: "jf-dialog-note"},
+			{kind: "HFlexBox", components: [
+				{kind: "Button", caption: "Cancel", flex: 1, onclick: "confirmCancel"},
+				{name: "confirmOk", kind: "Button", caption: "OK", flex: 1, className: "enyo-button-affirmative",
+					onclick: "confirmOkClick"}
+			]}
+		]},
 		// Under the app's name, top left. On a phone, Refresh and Sign Out live only here.
 		{kind: "AppMenu", components: [
 			{caption: "Refresh", onclick: "refreshClick"},
@@ -49,6 +58,7 @@ enyo.kind({
 		JF.relay = this.$.relay;
 		JF.music = this.$.nowPlaying;
 		JF.downloads = this.$.downloads;
+		JF.confirm = enyo.bind(this, "confirm");
 	},
 
 	rendered: function() {
@@ -89,9 +99,11 @@ enyo.kind({
 				if (ok && album) {
 					JF.api.albumTracks(album, function(ok2, data) {
 						var tracks = (ok2 && data && data.Items) || [];
+						var list = [];
 						for (var i = 0; i < tracks.length; i++) {
-							JF.downloads.start(tracks[i]);
+							list.push({item: tracks[i]});
 						}
+						JF.downloads.startAll(list);
 					});
 				}
 			});
@@ -222,6 +234,29 @@ enyo.kind({
 	signedIn: function() {
 		this.$.downloads.restore();
 		this.showHome();
+	},
+
+	// Ask, and call onOk only if the answer is yes.
+	confirm: function(title, text, okCaption, onOk) {
+		this.confirmAction = onOk;
+		this.$.confirmDialog.openAtCenter();
+		this.$.confirmDialog.setCaption(title);
+		this.$.confirmText.setContent(text);
+		this.$.confirmOk.setCaption(okCaption || "OK");
+	},
+
+	confirmOkClick: function() {
+		var action = this.confirmAction;
+		this.confirmAction = null;
+		this.$.confirmDialog.close();
+		if (action) {
+			action();
+		}
+	},
+
+	confirmCancel: function() {
+		this.confirmAction = null;
+		this.$.confirmDialog.close();
 	},
 
 	refreshClick: function() {

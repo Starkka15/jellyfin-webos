@@ -1,6 +1,6 @@
 {
 	"id": "com.stark.jellyfin.service",
-	"description": "Relays https video streams and finds servers on the local network for the Jellyfin app",
+	"description": "Relays https video streams, finds servers on the local network and reports free space for the Jellyfin app",
 	"engine": "node",
 	"activityTimeout": 120,
 	"services": [
@@ -21,6 +21,11 @@
 				{
 					"name": "discover",
 					"assistant": "discoverAssistant",
+					"public": true
+				},
+				{
+					"name": "space",
+					"assistant": "spaceAssistant",
 					"public": true
 				}
 			]

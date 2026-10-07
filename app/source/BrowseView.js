@@ -21,6 +21,7 @@ enyo.kind({
 			{name: "title", content: "", flex: 1, className: "jf-header-title jf-header-indent"},
 			{name: "sortButton", kind: "Button", caption: "Sort", onclick: "sortClick", showing: false},
 			{name: "favorite", kind: "Button", caption: "Add to Favorites", onclick: "favoriteClick", showing: false},
+			{name: "seasonButton", kind: "Button", caption: "Download Season", onclick: "seasonClick", showing: false},
 			{name: "count", content: "", className: "jf-header-count"}
 		]},
 		// Only for music, movie and show libraries: what the grid shows.
@@ -36,11 +37,39 @@ enyo.kind({
 		]},
 		{name: "scroller", kind: "Scroller", flex: 1, components: [
 			{name: "message", className: "jf-message"},
+			{name: "seasonStatus", className: "jf-message", showing: false},
 			{name: "grid", className: "jf-grid"},
 			{name: "more", kind: "Button", caption: "Show More", onclick: "loadMore", showing: false,
 				className: "jf-more"}
 		]},
-		{name: "sortMenu", kind: "PopupSelect", onSelect: "sortSelected"}
+		{name: "sortMenu", kind: "PopupSelect", onSelect: "sortSelected"},
+		// Download a season: which episodes, and how big. Each episode gets the
+		// player's usual audio and subtitle languages, as a single download does.
+		{name: "seasonDialog", kind: "ModalDialog", caption: "Download Season", lazy: false, components: [
+			{kind: "RowGroup", components: [
+				{kind: "Item", layoutKind: "HFlexLayout", align: "center", components: [
+					{content: "Episodes", flex: 1},
+					{name: "seasonWhich", kind: "ListSelector", onChange: "showSeasonEstimate", items: [
+						{caption: "All", value: "all"},
+						{caption: "Unwatched", value: "unwatched"}
+					]}
+				]},
+				{kind: "Item", layoutKind: "HFlexLayout", align: "center", components: [
+					{content: "Quality", flex: 1},
+					{name: "seasonQuality", kind: "ListSelector", onChange: "showSeasonEstimate", items: [
+						{caption: "Best", value: 3000000},
+						{caption: "Smaller", value: 1500000},
+						{caption: "Smallest", value: 800000}
+					]}
+				]}
+			]},
+			{name: "seasonEstimate", className: "jf-dialog-note"},
+			{kind: "HFlexBox", components: [
+				{kind: "Button", caption: "Cancel", flex: 1, onclick: "closeSeasonDialog"},
+				{name: "seasonGo", kind: "Button", caption: "Download", flex: 1, className: "enyo-button-affirmative",
+					onclick: "confirmSeason"}
+			]}
+		]}
 	],
 
 	// Show the children of this item, from the top.
@@ -62,6 +91,11 @@ enyo.kind({
 		// A show opens here, not on a detail page, so it is made a favorite here.
 		this.$.favorite.setShowing(parent.Type === "Series" || parent.Type === "BoxSet");
 		this.$.favorite.setCaption(JF.api.favoriteCaption(parent));
+		this.$.seasonButton.setShowing(parent.Type === "Season");
+		this.$.seasonButton.setCaption(JF.phone ? "Download" : "Download Season");
+		this.seasonEpisodes = null;
+		this.statusLoading = false;
+		this.showSeasonStatus();
 		this.loaded = 0;
 		this.total = 0;
 		this.$.title.setContent(this.titleFor(parent));
@@ -200,6 +234,131 @@ enyo.kind({
 				self.$.favorite.setCaption(JF.api.favoriteCaption(parent));
 			}
 		});
+	},
+
+	// ---- downloading a season -------------------------------------------------
+
+	// The season's episodes with their audio and subtitle tracks. callback(episodes)
+	loadEpisodes: function(callback) {
+		var self = this;
+		var season = this.parentItem;
+		if (this.seasonEpisodes) {
+			callback(this.seasonEpisodes);
+			return;
+		}
+		JF.api.get("/Shows/" + season.SeriesId + "/Episodes", {userId: JF.api.userId, seasonId: season.Id,
+			fields: "Overview,MediaStreams,MediaSources"}, function(ok, data) {
+			if (season === self.parentItem) {
+				self.seasonEpisodes = ok && data ? data.Items || [] : null;
+				callback(self.seasonEpisodes);
+			}
+		});
+	},
+
+	seasonClick: function() {
+		var self = this;
+		this.$.seasonButton.setDisabled(true);
+		this.loadEpisodes(function(episodes) {
+			self.$.seasonButton.setDisabled(false);
+			if (!episodes) {
+				self.$.message.setContent("Could not get this season's episodes.");
+				return;
+			}
+			self.$.seasonDialog.openAtCenter();
+			self.$.seasonWhich.setValue("all");
+			self.$.seasonQuality.setValue(parseInt(localStorage.getItem("jf.downloadQuality"), 10) || 3000000);
+			self.showSeasonEstimate();
+		});
+	},
+
+	// The episodes the dialog would download, leaving out ones already downloaded or waiting.
+	chosenEpisodes: function() {
+		var out = [];
+		var episodes = this.seasonEpisodes || [];
+		var unwatched = this.$.seasonWhich.getValue() === "unwatched";
+		for (var i = 0; i < episodes.length; i++) {
+			var ep = episodes[i];
+			if (ep.MediaType === "Video" && !JF.downloads.isWanted(ep.Id) &&
+				!(unwatched && ep.UserData && ep.UserData.Played)) {
+				out.push(ep);
+			}
+		}
+		return out;
+	},
+
+	showSeasonEstimate: function() {
+		var self = this;
+		var chosen = this.chosenEpisodes();
+		var quality = this.$.seasonQuality.getValue();
+		var bytes = 0;
+		for (var i = 0; i < chosen.length; i++) {
+			bytes += JF.downloads.estimate(chosen[i], quality);
+		}
+		this.$.seasonGo.setDisabled(!chosen.length);
+		var text = chosen.length ? chosen.length + (chosen.length === 1 ? " episode" : " episodes") + ", at most about " +
+			JF.downloads.sizeText(bytes) + "." : "Nothing left to download here.";
+		text += " Audio and subtitles follow your usual choices; subtitles are drawn into the picture.";
+		this.$.seasonEstimate.setContent(text);
+		JF.downloads.freeSpace(function(free) {
+			if (free !== null && self.$.seasonEstimate.getContent() === text) {
+				self.$.seasonEstimate.setContent(text + " " + JF.downloads.sizeText(free) + " free.");
+			}
+		});
+	},
+
+	closeSeasonDialog: function() {
+		this.$.seasonDialog.close();
+	},
+
+	confirmSeason: function() {
+		var quality = this.$.seasonQuality.getValue();
+		var qualityName = quality === 3000000 ? "Best" : quality === 1500000 ? "Smaller" : "Smallest";
+		localStorage.setItem("jf.downloadQuality", String(quality));
+		var chosen = this.chosenEpisodes();
+		var list = [];
+		for (var i = 0; i < chosen.length; i++) {
+			var tracks = JF.api.defaultTracks(chosen[i]);
+			list.push({item: chosen[i], choice: {audioIndex: tracks.audioIndex, subtitleIndex: tracks.subtitleIndex,
+				maxBitrate: quality, description: "quality: " + qualityName}});
+		}
+		this.$.seasonDialog.close();
+		JF.downloads.startAll(list);  // asks first if it may not fit
+	},
+
+	// "3 of 12 episodes downloaded, 2 waiting." under the header of a season.
+	showSeasonStatus: function() {
+		if (!this.listening) {
+			this.listening = true;
+			JF.downloads.addListener(enyo.bind(this, "showSeasonStatus"));
+		}
+		var season = this.parentItem;
+		var episodes = season && season.Type === "Season" ? this.seasonEpisodes : null;
+		if (season && season.Type === "Season" && !episodes && !this.statusLoading) {
+			// Only worth fetching when something of this season is downloaded.
+			var any = false;
+			var all = JF.downloads.items();
+			for (var i = 0; i < all.length; i++) {
+				if (all[i].SeasonId === season.Id) {
+					any = true;
+				}
+			}
+			if (any) {
+				var self = this;
+				this.statusLoading = true;
+				this.loadEpisodes(function() {
+					self.statusLoading = false;
+					self.showSeasonStatus();
+				});
+			}
+		}
+		var count = episodes ? JF.downloads.countFor(episodes) : {done: 0, pending: 0};
+		var text = "";
+		if (count.done || count.pending) {
+			text = count.done + " of " + episodes.length + " episodes downloaded" +
+				(count.pending ? ", " + count.pending + " still to come." : ".");
+		}
+		this.$.seasonStatus.setContent(text);
+		this.$.seasonStatus.setShowing(!!text);
 	},
 
 	tileClick: function(inSender, item) {

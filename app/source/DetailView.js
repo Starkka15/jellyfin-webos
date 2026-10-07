@@ -162,8 +162,14 @@ enyo.kind({
 	showEstimate: function() {
 		var seconds = (this.item.RunTimeTicks || 0) / 10000000;
 		var mb = Math.round(seconds * (this.$.dlQuality.getValue() + 192000) / 8 / 1048576);
-		this.$.dlEstimate.setContent((mb ? "At most about " + mb + " MB. " : "") +
-			"Subtitles are drawn into the picture.");
+		var text = (mb ? "At most about " + mb + " MB. " : "") + "Subtitles are drawn into the picture.";
+		var note = this.$.dlEstimate;
+		note.setContent(text);
+		JF.downloads.freeSpace(function(free) {
+			if (free !== null && note.getContent() === text) {
+				note.setContent(text + " " + JF.downloads.sizeText(free) + " free.");
+			}
+		});
 	},
 
 	closeOptions: function() {

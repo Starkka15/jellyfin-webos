@@ -28,8 +28,13 @@ enyo.kind({
 			method: "downloadStatusQuery", subscribe: true, onResponse: "statusResponse"},
 		{name: "cancelSvc", kind: "PalmService", service: "palm://com.palm.downloadmanager/", method: "cancelDownload"},
 		{name: "deleteSvc", kind: "PalmService", service: "palm://com.palm.downloadmanager/",
-			method: "deleteDownloadedFile"}
+			method: "deleteDownloadedFile"},
+		// Free space on /media/internal, from the app's own service (df in its jail).
+		{name: "spaceSvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/", method: "space",
+			onSuccess: "spaceAnswer", onFailure: "spaceAnswer"}
 	],
+	// Left free whatever happens: webOS needs room of its own on /media/internal.
+	reserve: 300 * 1048576,
 
 	create: function() {
 		this.inherited(arguments);
@@ -186,8 +191,97 @@ enyo.kind({
 	// choice: {audioIndex, subtitleIndex, maxBitrate, description}; left out, the
 	// player's last language choices and the best quality are used.
 	start: function(item, choice) {
+		this.startAll([{item: item, choice: choice}]);
+	},
+
+	// Queue several downloads ([{item, choice}]) after checking they fit, with
+	// whatever is already waiting. If they might not, ask first.
+	startAll: function(list) {
+		var self = this;
+		var fresh = [];
+		var need = this.pendingBytes();
+		for (var i = 0; i < list.length; i++) {
+			if (!this.isWanted(list[i].item.Id)) {
+				fresh.push(list[i]);
+				need += this.estimate(list[i].item, list[i].choice && list[i].choice.maxBitrate);
+			}
+		}
+		if (!fresh.length) {
+			return;
+		}
+		var go = function() {
+			for (var j = 0; j < fresh.length; j++) {
+				self.queue(fresh[j].item, fresh[j].choice);
+			}
+		};
+		this.freeSpace(function(free) {
+			if (free === null || need + self.reserve <= free) {
+				go();  // fits, or the space could not be read: go ahead as before
+				return;
+			}
+			JF.confirm("Not Enough Space?",
+				(fresh.length > 1 ? "These downloads" : "This download") + " could take up to " + self.sizeText(need) +
+				(self.pendingBytes() ? ", with the ones already waiting," : "") + " and " +
+				self.sizeText(Math.max(0, free - self.reserve)) + " is free. A download that runs out of room stops.",
+				"Download Anyway", go);
+		});
+	},
+
+	// Queued, downloading or done already.
+	isWanted: function(id) {
+		var e = this.entries[id];
+		return !!e && (e.state === "done" || e.state === "downloading" || e.state === "queued");
+	},
+
+	// At most how big a download gets. Video: the bitrate asked for (the server
+	// often needs less) and the sound. Music: the file's own size when known, else
+	// a high-quality 320 kb/s.
+	estimate: function(item, maxBitrate) {
+		var seconds = (item.RunTimeTicks || 0) / 10000000;
+		if (item.MediaType === "Audio") {
+			var source = item.MediaSources && item.MediaSources[0];
+			return source && source.Size ? source.Size : seconds * 320000 / 8;
+		}
+		var stored = parseInt(localStorage.getItem("jf.downloadQuality"), 10) || 3000000;
+		return seconds * ((maxBitrate || stored) + 192000) / 8;
+	},
+
+	// What the queued and running downloads still have to fetch.
+	pendingBytes: function() {
+		var total = 0;
+		for (var id in this.entries) {
+			var e = this.entries[id];
+			if (e.state === "queued" || e.state === "downloading") {
+				total += Math.max(0, this.estimate(e.item, e.maxBitrate) - (e.received || 0));
+			}
+		}
+		return total;
+	},
+
+	sizeText: function(bytes) {
+		return bytes >= 1073741824 ? (bytes / 1073741824).toFixed(1) + " GB" : Math.round(bytes / 1048576) + " MB";
+	},
+
+	// callback(free bytes), or callback(null) when the service cannot say.
+	freeSpace: function(callback) {
+		this.spaceWaiting = (this.spaceWaiting || []).concat([callback]);
+		if (this.spaceWaiting.length === 1) {
+			this.$.spaceSvc.call({});
+		}
+	},
+
+	spaceAnswer: function(inSender, r) {
+		var free = r && r.returnValue && typeof r.free === "number" ? r.free : null;
+		var waiting = this.spaceWaiting || [];
+		this.spaceWaiting = [];
+		for (var i = 0; i < waiting.length; i++) {
+			waiting[i](free);
+		}
+	},
+
+	queue: function(item, choice) {
 		var old = this.entries[item.Id];
-		if (old && (old.state === "done" || old.state === "downloading" || old.state === "queued")) {
+		if (this.isWanted(item.Id)) {
 			return;
 		}
 		if (old && old.ticket) {

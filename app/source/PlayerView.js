@@ -246,12 +246,13 @@ enyo.kind({
 		if (!this.item || !this.info || JF.noReport) {
 			return;
 		}
-		JF.api.post(path, {
+		// Kept and sent later if there is no connection (a download watched offline).
+		JF.api.report(path, {
 			ItemId: this.item.Id, MediaSourceId: this.info.mediaSourceId, PlaySessionId: this.info.playSessionId,
 			PositionTicks: this.positionTicks(), IsPaused: !!this.paused,
 			PlayMethod: this.info.method, CanSeek: true,
 			AudioStreamIndex: this.audioIndex, SubtitleStreamIndex: this.subtitleIndex
-		});
+		}, this.item.RunTimeTicks);
 	},
 
 	stopTimers: function() {

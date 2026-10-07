@@ -302,3 +302,28 @@ discoverAssistant.prototype.run = function(future) {
 	}
 	return future;
 };
+
+// ---- luna command: space ----------------------------------------------------
+// Room left for downloads, which go to /media/internal. A web app cannot ask,
+// and node 0.4 has no statvfs, but the service jail has busybox df.
+// -> {returnValue: true, free: <bytes>, total: <bytes>}
+var spaceAssistant = function() {};
+spaceAssistant.prototype.run = function(future) {
+	child_process.exec("df -k /media/internal", function(err, stdout) {
+		// Filesystem 1K-blocks Used Available Use% Mounted on; a long name wraps onto its own line.
+		var f = String(stdout || "").split("\n").slice(1).join(" ").split(/\s+/);
+		var nums = [];
+		for (var i = 0; i < f.length; i++) {
+			if (/^\d+$/.test(f[i])) {
+				nums.push(parseInt(f[i], 10));
+			}
+		}
+		if (err || nums.length < 3) {
+			log("space: df failed: " + (err || stdout));
+			future.result = {returnValue: false, errorText: "df failed"};
+			return;
+		}
+		future.result = {returnValue: true, total: nums[0] * 1024, free: nums[2] * 1024};
+	});
+	return future;
+};
