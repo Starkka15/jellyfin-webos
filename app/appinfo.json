@@ -6,6 +6,7 @@
 	"main": "index.html",
 	"title": "Jellyfin",
 	"icon": "images/icon.png",
+	"splashicon": "images/icon-256x256.png",
 	"miniicon": "images/miniicon.png",
 	"uiRevision": 2
 }

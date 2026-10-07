@@ -45,9 +45,12 @@ enyo.kind({
 		// Watched state: a tick when seen, a count of unseen episodes on a
 		// series, and a bar when part-way through.
 		var data = item.UserData || {};
-		var badge = data.UnplayedItemCount ? String(data.UnplayedItemCount) : (data.Played ? "✓" : "");
-		this.$.badge.setContent(badge);
-		this.$.badge.setShowing(!!badge);
+		// The tick is drawn in CSS (jf-tile-seen): the TouchPad font has no ✓.
+		var count = data.UnplayedItemCount ? String(data.UnplayedItemCount) : "";
+		var seen = !count && !!data.Played;
+		this.$.badge.setContent(count);
+		this.$.badge.addRemoveClass("jf-tile-seen", seen);
+		this.$.badge.setShowing(!!count || seen);
 		var percent = data.PlayedPercentage || 0;
 		this.$.progress.setShowing(percent > 0 && percent < 100);
 		this.$.progressBar.applyStyle("width", Math.round(percent) + "%");

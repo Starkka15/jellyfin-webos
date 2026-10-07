@@ -387,3 +387,21 @@ body {
 .jf-np-audio {
 	display: none;
 }
+
+/* Watched: a tick drawn with borders, since the TouchPad font has no check mark. */
+.jf-tile-badge.jf-tile-seen {
+	width: 26px;
+	min-width: 0;
+	padding: 0;
+}
+.jf-tile-seen:after {
+	content: "";
+	position: absolute;
+	left: 9px;
+	top: 4px;
+	width: 6px;
+	height: 12px;
+	border: solid #ffffff;
+	border-width: 0 3px 3px 0;
+	-webkit-transform: rotate(45deg);
+}

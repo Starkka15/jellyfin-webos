@@ -417,10 +417,11 @@ enyo.kind({
 	},
 
 	menuItems: function(streams, current, withOff) {
-		var items = withOff ? [{caption: (current < 0 ? "✓ " : "") + "Off", value: -1}] : [];
+		// MenuCheckItem draws its tick from an image: the TouchPad font has no ✓.
+		var items = withOff ? [{kind: "MenuCheckItem", caption: "Off", value: -1, checked: current < 0}] : [];
 		for (var i = 0; i < streams.length; i++) {
 			var on = streams[i].index === current || (current === null && streams[i].isDefault);
-			items.push({caption: (on ? "✓ " : "") + streams[i].title, value: streams[i].index});
+			items.push({kind: "MenuCheckItem", caption: streams[i].title, value: streams[i].index, checked: on});
 		}
 		return items;
 	},

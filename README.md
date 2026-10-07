@@ -46,6 +46,7 @@ A few things the TouchPad needs, found the hard way:
 app/       the Enyo 1 web app (appinfo.json, index.html, source/, stylesheets/)
 service/   the stream relay, a Node.js 0.4 webOS service
 package/   packageinfo.json, which bundles the app and service into one .ipk
+art/       icon.svg, the source of the app icons
 tools/     deploy.ps1 (package, install, launch) and tp-tools.ps1 (device helpers)
 ```
 
@@ -69,3 +70,8 @@ paths at the top first).
 ## License
 
 GPL-3.0. See [LICENSE](LICENSE).
+
+The app icon (`art/icon.svg` and `app/images/icon*.png`, `miniicon.png`) is built on the Jellyfin
+logo from [jellyfin/jellyfin-ux](https://github.com/jellyfin/jellyfin-ux), © the Jellyfin contributors,
+used under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). The icon is shared under
+the same license. This app is not made by or affiliated with the Jellyfin project.
