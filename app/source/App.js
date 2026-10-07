@@ -61,6 +61,14 @@ enyo.kind({
 					// {open: '<id>', options: true} also opens the download options.
 					if (params.options) {
 						setTimeout(function() { self.$.detail.openOptions(); }, 2500);
+						// {..., options: "subtitles"} also opens that dropdown, as a tap would.
+						if (params.options === "subtitles") {
+							setTimeout(function() {
+								var ev = document.createEvent("MouseEvents");
+								ev.initMouseEvent("click", true, true, window, 1, 0, 0, 0, 0, false, false, false, false, 0, null);
+								self.$.detail.$.dlSubtitles.hasNode().dispatchEvent(ev);
+							}, 4000);
+						}
 					}
 				}
 			});

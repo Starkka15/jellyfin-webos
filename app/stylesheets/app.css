@@ -418,9 +418,9 @@ body {
 	color: #555555;
 	padding: 10px 4px;
 }
-/* Enyo's dialogs are light and assume dark text; without this they inherit the
-   page's light text and their labels all but vanish. */
-.enyo-modaldialog,
-.enyo-modaldialog .enyo-item {
+/* Enyo's popups (dialogs, dropdown lists, menus) are light and assume dark text;
+   without this they inherit the page's light text and their items all but vanish. */
+.enyo-popup,
+.enyo-popup .enyo-item {
 	color: #2b2f36;
 }
