@@ -27,8 +27,8 @@ Tap a picture for the full 1024×768 screenshot.
 | Shows | Music |
 | [![Video with controls](screenshots/video-controls-small.png)](screenshots/video-controls.png) | [![Video](screenshots/video-small.png)](screenshots/video.png) |
 | Video, controls showing | Video, full screen with subtitles |
-| [![Album and Now Playing](screenshots/album-small.png)](screenshots/album.png) | |
-| Album, with the Now Playing bar | |
+| [![Album and Now Playing](screenshots/album-small.png)](screenshots/album.png) | [![Music controls in the notification area](screenshots/notification-controls-small.png)](screenshots/notification-controls.png) |
+| Album, with the Now Playing bar | Music controls in the notification area, with Bluetooth AirPods |
 
 ## Requirements
 
