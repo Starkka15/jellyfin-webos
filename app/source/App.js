@@ -110,6 +110,17 @@ enyo.kind({
 						item.musicCategory = params.tab;
 					}
 					self.openItem(self, item);
+					// {open: '<album id>', menu: true} also opens its More menu.
+					// {..., addToPlaylist: true} opens Add to Playlist for the whole album.
+					if (params.addToPlaylist) {
+						setTimeout(function() {
+							self.$.album.target = {tracks: self.$.album.tracks};
+							self.$.album.openPlaylistDialog();
+						}, 3000);
+					}
+					if (params.menu) {
+						setTimeout(function() { self.$.album.moreClick(); }, 3000);
+					}
 					// {open: '<id>', options: true} also opens the download options.
 					if (params.options) {
 						setTimeout(function() { self.$.detail.openOptions(); }, 2500);
@@ -203,7 +214,7 @@ enyo.kind({
 		if (this.tooSoon()) {
 			return;
 		}
-		var view = item.Type === "MusicAlbum" || item.Type === "Playlist" ? "album" : JF.api.isFolder(item) ? "browse" : "detail";
+		var view = /^(MusicAlbum|Playlist|TrackList)$/.test(item.Type) ? "album" : JF.api.isFolder(item) ? "browse" : "detail";
 		this.stack.push({view: view, item: item});
 		this.showView(view, item);
 	},

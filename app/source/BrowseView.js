@@ -69,6 +69,13 @@ enyo.kind({
 				return;
 			}
 			var items = data.Items || [];
+			// The Playlists tab starts with the automatic lists; they are not counted in the paging.
+			if (parent.musicCategory === "playlists" && self.loaded === 0) {
+				for (var a = 0; a < JF.api.autoLists.length; a++) {
+					self.$.grid.createComponent({kind: "JF.Tile", item: JF.api.autoLists[a], onTileClick: "tileClick",
+						owner: self});
+				}
+			}
 			for (var i = 0; i < items.length; i++) {
 				if (items[i].Type === "MusicGenre") {
 					items[i].musicLibraryId = parent.Id;  // a genre page lists this library's albums
@@ -78,7 +85,7 @@ enyo.kind({
 			self.$.grid.render();
 			self.loaded += items.length;
 			self.total = data.TotalRecordCount || self.loaded;
-			self.$.message.setContent(self.loaded ? "" : "Nothing here.");
+			self.$.message.setContent(self.loaded || parent.musicCategory === "playlists" ? "" : "Nothing here.");
 			self.$.count.setContent(self.total ? self.loaded + " of " + self.total : "");
 			self.$.more.setShowing(items.length > 0 && self.loaded < self.total);
 		});

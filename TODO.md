@@ -43,22 +43,22 @@ The rest are stock webOS 3 features the app does not use yet.
 
 ## Music
 
-- [ ] **Shuffle.** A Shuffle button on every album and playlist, and shuffle on or off
+- [x] **Shuffle.** A Shuffle button on every album and playlist, and shuffle on or off
   for whatever is playing.
-- [ ] **Playlists.** Play the server's playlists; create new ones and add tracks or
+- [x] **Playlists.** Play the server's playlists; create new ones and add tracks or
   whole albums to them from the tablet (saved on the server, so other Jellyfin
   apps see them too).
-- [ ] **Browse by category.** Artists (today they are only reachable through search),
+- [x] **Browse by category.** Artists (today they are only reachable through search),
   genres, and perhaps years, next to the album grid; an artist page with their albums.
 - [ ] **Downloads for music.** Download an album, playlist or track to play offline,
   as for video; downloaded albums in the home screen's Downloads row.
 - [ ] **Player niceties:**
-  - [ ] Repeat: off, the whole list, or one track
-  - [ ] A queue you can see and change: Play Next, Add to Queue, remove, reorder
-  - [ ] A full Now Playing screen with large cover art, opened from the bar
-  - [ ] Favorite tracks and albums (Jellyfin's favorites), and a Favorites view
-  - [ ] Recently played and most played, from the server's history
-  - [ ] Instant Mix: the server's "more like this" playlist from a track, album or artist
+  - [x] Repeat: off, the whole list, or one track
+  - [x] A queue you can see and change: Play Next, Add to Queue, remove (reordering not yet)
+  - [x] A full Now Playing screen with large cover art, opened from the bar
+  - [x] Favorite tracks and albums (Jellyfin's favorites), and a Favorite Songs list
+  - [x] Recently played and most played, from the server's history
+  - [x] Instant Mix: the server's "more like this" playlist from a track, album or artist
   - [ ] Remember the queue and position when the app is closed
 
 ## Missing features

@@ -597,3 +597,13 @@ body {
 .jf-queue-remove {
 	margin-left: 10px;
 }
+
+/* ---- track menus and Add to Playlist ----------------------------------- */
+
+.jf-track-more {
+	min-width: 44px;
+	margin-left: 10px;
+}
+.jf-playlist-choices {
+	height: 200px;
+}

@@ -1,5 +1,9 @@
-/* One album: cover, details, a Play button and the track list. Tapping a track
- * plays the album from that track.
+/* A list of tracks: an album, a playlist, or one of the automatic lists
+ * (favorite, recently played, most played; see JF.api.autoLists). Cover,
+ * details, Play, Shuffle and More, then the tracks. Tapping a track plays the
+ * list from that track; each track's "..." button and the More button open the
+ * same menu: Play Next, Add to Queue, Add to Playlist, Instant Mix, Favorite,
+ * and for a playlist's own tracks, Remove from Playlist.
  */
 enyo.kind({
 	name: "JF.AlbumView",
@@ -24,11 +28,28 @@ enyo.kind({
 					{kind: "HFlexBox", className: "jf-detail-buttons", components: [
 						{name: "play", kind: "Button", caption: "Play", className: "enyo-button-affirmative",
 							onclick: "playClick", disabled: true},
-						{name: "shuffle", kind: "Button", caption: "Shuffle", onclick: "shuffleClick", disabled: true}
+						{name: "shuffle", kind: "Button", caption: "Shuffle", onclick: "shuffleClick", disabled: true},
+						{name: "more", kind: "Button", caption: "More", onclick: "moreClick", disabled: true}
 					]},
 					{name: "message", className: "jf-message"},
 					{name: "tracks", className: "jf-tracks"}
 				]}
+			]}
+		]},
+		{name: "menu", kind: "PopupSelect", onSelect: "menuSelect"},
+		// Add to Playlist: an existing music playlist, or a new one.
+		{name: "playlistDialog", kind: "ModalDialog", caption: "Add to Playlist", lazy: false, components: [
+			{name: "playlistScroller", kind: "Scroller", className: "jf-playlist-choices", components: [
+				{name: "playlistList", kind: "RowGroup", caption: "Your playlists"}
+			]},
+			{kind: "RowGroup", caption: "New playlist", components: [
+				{name: "newName", kind: "Input", hint: "Name", autoCapitalize: "title"}
+			]},
+			{name: "playlistNote", className: "jf-dialog-note"},
+			{kind: "HFlexBox", components: [
+				{kind: "Button", caption: "Cancel", flex: 1, onclick: "closePlaylistDialog"},
+				{name: "createButton", kind: "Button", caption: "Create", flex: 1, className: "enyo-button-affirmative",
+					onclick: "createPlaylistClick"}
 			]}
 		]}
 	],
@@ -40,12 +61,14 @@ enyo.kind({
 		this.$.title.setContent(album.Name || "");
 		this.$.name.setContent(album.Name || "");
 		this.$.artist.setContent(album.Type === "Playlist" ? "Playlist" :
+			album.Type === "TrackList" ? "Automatic playlist" :
 			album.AlbumArtist || (album.Artists || []).join(", ") || "");
 		this.$.meta.setContent(album.ProductionYear ? String(album.ProductionYear) : "");
 		var url = JF.api.imageUrl(album, 480);
 		this.$.art.applyStyle("background-image", url ? "url('" + url + "')" : "none");
 		this.$.play.setDisabled(true);
 		this.$.shuffle.setDisabled(true);
+		this.$.more.setDisabled(true);
 		this.$.tracks.destroyControls();
 		this.$.tracks.render();
 		this.$.message.setContent("Loading…");
@@ -62,10 +85,14 @@ enyo.kind({
 		});
 	},
 
+	// A playlist or automatic list keeps its own order; an album goes by disc and track.
+	listOrder: function() {
+		return this.album.Type === "Playlist" || this.album.Type === "TrackList";
+	},
+
 	showTracks: function(tracks) {
-		// A playlist keeps its own order; an album goes by disc and track.
-		var playlist = this.album.Type === "Playlist";
-		this.tracks = tracks = playlist ? tracks : this.inOrder(tracks);
+		var byPosition = this.listOrder();
+		this.tracks = tracks = byPosition ? tracks : this.inOrder(tracks);
 		var discs = {};
 		var total = 0;
 		for (var i = 0; i < tracks.length; i++) {
@@ -73,10 +100,11 @@ enyo.kind({
 			total += tracks[i].RunTimeTicks || 0;
 		}
 		var manyDiscs = Object.keys ? Object.keys(discs).length > 1 : false;
+		this.$.tracks.destroyControls();
 		for (i = 0; i < tracks.length; i++) {
 			this.$.tracks.createComponent({kind: "JF.TrackRow", item: tracks[i], position: i,
-				showDisc: manyDiscs, albumArtist: this.album.AlbumArtist, numberByPosition: playlist,
-				onRowClick: "rowClick", owner: this});
+				showDisc: manyDiscs && !byPosition, albumArtist: this.album.AlbumArtist, numberByPosition: byPosition,
+				onRowClick: "rowClick", onMore: "trackMore", owner: this});
 		}
 		this.$.tracks.render();
 		var meta = [];
@@ -88,9 +116,11 @@ enyo.kind({
 			meta.push(JF.api.ticksToText(total));
 		}
 		this.$.meta.setContent(meta.join("  ·  "));
-		this.$.message.setContent(tracks.length ? "" : "No tracks.");
+		this.$.message.setContent(tracks.length ? "" : this.album.Id === "favorites" ?
+			"No favorite songs yet. Use a track's \"...\" button to add some." : "No tracks.");
 		this.$.play.setDisabled(!tracks.length);
 		this.$.shuffle.setDisabled(tracks.length < 2);
+		this.$.more.setDisabled(!tracks.length);
 	},
 
 	// Files without track numbers come back sorted by name as text (1, 10, 11,
@@ -129,23 +159,158 @@ enyo.kind({
 		}
 	},
 
+	// The player's shuffle mode: it can be turned off again on the Now Playing screen.
 	shuffleClick: function() {
-		var list = this.tracks.slice(0);
-		for (var i = list.length - 1; i > 0; i--) {
-			var j = Math.floor(Math.random() * (i + 1));
-			var t = list[i];
-			list[i] = list[j];
-			list[j] = t;
+		if (this.tracks.length) {
+			this.doPlayTracks(this.tracks, "shuffle");
 		}
-		this.doPlayTracks(list, 0);
 	},
 
 	rowClick: function(inSender, position) {
 		this.doPlayTracks(this.tracks, position);
+	},
+
+	// ---- the More menu ---------------------------------------------------------
+
+	// The whole list.
+	moreClick: function() {
+		var whole = this.album.Type === "MusicAlbum" || this.album.Type === "Playlist" ? this.album : null;
+		this.openMenu({tracks: this.tracks, item: whole}, this.$.more);
+	},
+
+	// One track.
+	trackMore: function(inSender, position, button) {
+		this.openMenu({tracks: [this.tracks[position]], item: this.tracks[position], position: position}, button);
+	},
+
+	openMenu: function(target, around) {
+		this.target = target;
+		var items = [
+			{caption: "Play Next", value: "next"},
+			{caption: "Add to Queue", value: "queue"},
+			{caption: "Add to Playlist…", value: "playlist"}
+		];
+		if (target.item) {
+			items.push({caption: "Instant Mix", value: "mix"});
+			var fav = target.item.UserData && target.item.UserData.IsFavorite;
+			items.push({caption: fav ? "Remove from Favorites" : "Add to Favorites", value: fav ? "unfavorite" : "favorite"});
+		}
+		if (this.album.Type === "Playlist" && target.position !== undefined && target.item.PlaylistItemId) {
+			items.push({caption: "Remove from Playlist", value: "remove"});
+		}
+		this.$.menu.setItems(items);
+		this.$.menu.openAroundControl(around);
+	},
+
+	menuSelect: function(inSender, inItem) {
+		var self = this;
+		var t = this.target;
+		var action = inItem.getValue();
+		if (action === "next") {
+			JF.music.playNext(t.tracks);
+		} else if (action === "queue") {
+			JF.music.addToQueue(t.tracks);
+		} else if (action === "playlist") {
+			this.openPlaylistDialog();
+		} else if (action === "mix") {
+			JF.api.instantMix(t.item.Id, function(ok, data) {
+				var mix = (ok && data && data.Items) || [];
+				if (mix.length) {
+					self.doPlayTracks(mix, 0);
+				}
+			});
+		} else if (action === "favorite" || action === "unfavorite") {
+			JF.api.setFavorite(t.item.Id, action === "favorite", function(ok, userData) {
+				if (ok) {
+					t.item.UserData = userData || t.item.UserData || {};
+					t.item.UserData.IsFavorite = action === "favorite";
+					if (self.album.Id === "favorites" && action === "unfavorite") {
+						self.open(self.album);  // it leaves the favorites list
+					}
+				}
+			});
+		} else if (action === "remove") {
+			JF.api.removeFromPlaylist(this.album.Id, [t.item.PlaylistItemId], function(ok) {
+				if (ok) {
+					self.open(self.album);
+				}
+			});
+		}
+	},
+
+	// ---- Add to Playlist --------------------------------------------------------
+
+	openPlaylistDialog: function() {
+		var self = this;
+		this.$.playlistDialog.openAtCenter();
+		this.$.newName.setValue("");
+		this.$.playlistNote.setContent("Loading your playlists…");
+		this.$.playlistList.destroyControls();
+		this.$.playlistList.render();
+		JF.api.playlists(function(ok, data) {
+			var lists = (ok && data && data.Items) || [];
+			self.$.playlistList.destroyControls();
+			for (var i = 0; i < lists.length; i++) {
+				// Not into itself.
+				if (lists[i].Id === self.album.Id) {
+					continue;
+				}
+				self.$.playlistList.createComponent({kind: "Item", content: lists[i].Name, playlist: lists[i],
+					onclick: "playlistChosen", owner: self});
+			}
+			self.$.playlistList.render();
+			self.$.playlistScroller.setShowing(self.$.playlistList.getControls().length > 0);
+			self.$.playlistNote.setContent(lists.length ? "Tap a playlist, or name a new one." :
+				"You have no playlists yet. Name one to create it.");
+		});
+	},
+
+	ids: function() {
+		var ids = [];
+		for (var i = 0; i < this.target.tracks.length; i++) {
+			ids.push(this.target.tracks[i].Id);
+		}
+		return ids;
+	},
+
+	playlistChosen: function(inSender) {
+		var self = this;
+		var playlist = inSender.playlist;
+		this.$.playlistNote.setContent("Adding…");
+		JF.api.addToPlaylist(playlist.Id, this.ids(), function(ok) {
+			if (ok) {
+				self.closePlaylistDialog();
+			} else {
+				self.$.playlistNote.setContent("Could not add to " + playlist.Name + ".");
+			}
+		});
+	},
+
+	createPlaylistClick: function() {
+		var self = this;
+		var name = (this.$.newName.getValue() || "").replace(/^\s+|\s+$/g, "");
+		if (!name) {
+			this.$.playlistNote.setContent("Type a name for the new playlist.");
+			return;
+		}
+		this.$.createButton.setDisabled(true);
+		this.$.playlistNote.setContent("Creating…");
+		JF.api.createPlaylist(name, this.ids(), function(ok) {
+			self.$.createButton.setDisabled(false);
+			if (ok) {
+				self.closePlaylistDialog();
+			} else {
+				self.$.playlistNote.setContent("Could not create the playlist.");
+			}
+		});
+	},
+
+	closePlaylistDialog: function() {
+		this.$.playlistDialog.close();
 	}
 });
 
-/* One line in an album's track list. */
+/* One line in a track list: tap it to play; "..." opens its menu. */
 enyo.kind({
 	name: "JF.TrackRow",
 	kind: enyo.HFlexBox,
@@ -159,15 +324,19 @@ enyo.kind({
 		albumArtist: ""
 	},
 	events: {
-		onRowClick: ""
+		onRowClick: "",
+		onMore: ""
 	},
 	components: [
-		{name: "number", className: "jf-track-number"},
-		{flex: 1, components: [
-			{name: "name", className: "jf-track-name"},
-			{name: "artist", className: "jf-track-artist"}
+		{kind: "HFlexBox", align: "center", flex: 1, onclick: "rowClick", components: [
+			{name: "number", className: "jf-track-number"},
+			{flex: 1, components: [
+				{name: "name", className: "jf-track-name"},
+				{name: "artist", className: "jf-track-artist"}
+			]},
+			{name: "length", className: "jf-track-length"}
 		]},
-		{name: "length", className: "jf-track-length"}
+		{name: "moreButton", kind: "Button", caption: "...", className: "jf-track-more", onclick: "moreClick"}
 	],
 
 	create: function() {
@@ -186,8 +355,13 @@ enyo.kind({
 		this.$.length.setContent(t.RunTimeTicks ? JF.api.ticksToClock(t.RunTimeTicks) : "");
 	},
 
-	clickHandler: function() {
+	rowClick: function() {
 		this.doRowClick(this.position);
+		return true;
+	},
+
+	moreClick: function() {
+		this.doMore(this.position, this.$.moreButton);
 		return true;
 	}
 });

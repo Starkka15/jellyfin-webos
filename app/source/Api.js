@@ -316,8 +316,75 @@ JF.api = {
 			});
 	},
 
+	// ---- music: playlists, favorites, mixes ------------------------------------
+
+	// Automatic lists shown first on the Playlists tab; opened like playlists.
+	autoLists: [
+		{Type: "TrackList", Id: "favorites", Name: "Favorite Songs"},
+		{Type: "TrackList", Id: "recent", Name: "Recently Played"},
+		{Type: "TrackList", Id: "most", Name: "Most Played"}
+	],
+
+	// The tracks of an automatic list. callback(ok, {Items: [...]})
+	trackList: function(list, callback) {
+		var params = {userId: this.userId, includeItemTypes: "Audio", recursive: true};
+		if (list.Id === "favorites") {
+			params.filters = "IsFavorite";
+			params.sortBy = "AlbumArtist,Album,SortName";
+		} else if (list.Id === "recent") {
+			params.filters = "IsPlayed";
+			params.sortBy = "DatePlayed";
+			params.sortOrder = "Descending";
+			params.limit = 100;
+		} else {
+			params.filters = "IsPlayed";
+			params.sortBy = "PlayCount";
+			params.sortOrder = "Descending";
+			params.limit = 100;
+		}
+		this.get("/Items", params, callback);
+	},
+
+	// The user's music playlists. callback(ok, {Items: [...]})
+	playlists: function(callback) {
+		this.get("/Items", {userId: this.userId, includeItemTypes: "Playlist", mediaTypes: "Audio",
+			recursive: true, sortBy: "SortName"}, callback);
+	},
+
+	// callback(ok, {Id}) with the new playlist's id.
+	createPlaylist: function(name, ids, callback) {
+		this.request("POST", "/Playlists", null, {Name: name, Ids: ids, UserId: this.userId, MediaType: "Audio"},
+			function(ok, data) { callback(ok, data); });
+	},
+
+	addToPlaylist: function(playlistId, ids, callback) {
+		this.request("POST", "/Playlists/" + playlistId + "/Items", {ids: ids.join(","), userId: this.userId}, null,
+			function(ok) { callback(ok); });
+	},
+
+	// entryIds are the PlaylistItemId of each entry, not the track ids.
+	removeFromPlaylist: function(playlistId, entryIds, callback) {
+		this.request("DELETE", "/Playlists/" + playlistId + "/Items", {entryIds: entryIds.join(",")}, null,
+			function(ok) { callback(ok); });
+	},
+
+	// callback(ok, userData) with the item's new UserData.
+	setFavorite: function(id, on, callback) {
+		this.request(on ? "POST" : "DELETE", "/UserFavoriteItems/" + id, {userId: this.userId}, null,
+			function(ok, data) { callback(ok, data); });
+	},
+
+	// Jellyfin's "more like this" playlist. callback(ok, {Items: [...]})
+	instantMix: function(id, callback) {
+		this.get("/Items/" + id + "/InstantMix", {userId: this.userId, limit: 100}, callback);
+	},
+
 	// The tracks of an album, in disc and track order. callback(ok, {Items: [...]})
 	albumTracks: function(album, callback) {
+		if (album.Type === "TrackList") {
+			this.trackList(album, callback);
+			return;
+		}
 		if (album.Type === "Playlist") {
 			// In the playlist's own order.
 			this.get("/Playlists/" + album.Id + "/Items", {userId: this.userId}, callback);

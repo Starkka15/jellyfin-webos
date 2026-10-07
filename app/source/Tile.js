@@ -31,7 +31,7 @@ enyo.kind({
 		if (!item) {
 			return;
 		}
-		if (/^(MusicAlbum|Audio|MusicArtist|MusicGenre|Playlist)$/.test(item.Type)) {
+		if (/^(MusicAlbum|Audio|MusicArtist|MusicGenre|Playlist|TrackList)$/.test(item.Type)) {
 			this.addClass("jf-tile-square");
 		}
 		var url = JF.api.imageUrl(item, 330);
