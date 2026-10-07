@@ -540,3 +540,60 @@ body {
 .jf-tabs {
 	margin: 12px 24px 0;
 }
+
+/* ---- Now Playing screen ------------------------------------------------- */
+
+.jf-npv-left {
+	width: 400px;
+	padding: 20px 24px;
+}
+.jf-npv-art {
+	width: 352px;
+	height: 352px;
+	background-color: #2a3142;
+	background-position: center center;
+	background-repeat: no-repeat;
+	-webkit-background-size: cover;
+	background-size: cover;
+	-webkit-border-radius: 6px;
+	border-radius: 6px;
+}
+.jf-npv-title {
+	font-size: 22px;
+	margin-top: 14px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.jf-npv-artist {
+	font-size: 16px;
+	color: #a0a7b4;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.jf-npv-time {
+	margin-top: 6px;
+}
+.jf-npv-transport .enyo-button,
+.jf-npv-modes .enyo-button {
+	margin: 4px 4px;
+}
+.jf-npv-pause {
+	min-width: 96px;
+}
+.jf-npv-right {
+	padding: 6px 24px 0 0;
+}
+.jf-npv-heading {
+	padding-left: 0;
+}
+.jf-queue-current {
+	background: #1b2130;
+}
+.jf-queue-current .jf-track-number {
+	color: #00a4dc;
+}
+.jf-queue-remove {
+	margin-left: 10px;
+}

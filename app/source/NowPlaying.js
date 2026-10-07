@@ -11,9 +11,12 @@ enyo.kind({
 	align: "center",
 	className: "jf-nowplaying",
 	showing: false,
+	events: {
+		onOpen: ""  // the cover or title was tapped: show the Now Playing screen
+	},
 	components: [
-		{name: "art", className: "jf-np-art"},
-		{flex: 1, className: "jf-np-text", components: [
+		{name: "art", className: "jf-np-art", onclick: "doOpen"},
+		{flex: 1, className: "jf-np-text", onclick: "doOpen", components: [
 			{name: "title", className: "jf-np-title"},
 			{name: "artist", className: "jf-np-artist"}
 		]},
@@ -44,12 +47,132 @@ enyo.kind({
 	},
 
 	// ---- the queue -------------------------------------------------------
+	// Views follow along through addListener: fn(what), what being "track",
+	// "state" (playing or paused), "queue" (order, shuffle, repeat) or "position".
 
-	// Play these tracks, starting with tracks[index].
+	addListener: function(fn) {
+		this.listeners = this.listeners || [];
+		this.listeners.push(fn);
+	},
+
+	notify: function(what) {
+		var list = this.listeners || [];
+		for (var i = 0; i < list.length; i++) {
+			list[i](what);
+		}
+	},
+
+	// Play these tracks, starting with tracks[index]; index "shuffle" plays them
+	// in a random order.
 	playTracks: function(tracks, index) {
 		this.queue = tracks.slice(0);
-		this.setShowing(true);
+		this.original = null;
+		this.shuffled = false;
+		// Not over the Now Playing screen, which has the controls already.
+		this.setShowing(!(this.owner && this.owner.$.pane && this.owner.$.pane.getViewName() === "nowplayingView"));
+		if (index === "shuffle") {
+			this.index = Math.floor(Math.random() * this.queue.length);
+			this.setShuffle(true);
+			index = 0;
+		}
+		this.notify("queue");
 		this.playIndex(index || 0, 0);
+	},
+
+	// Shuffle keeps the current track and mixes the rest; turning it off goes
+	// back to the order the tracks came in.
+	setShuffle: function(on) {
+		if (!this.queue || !!on === !!this.shuffled) {
+			return;
+		}
+		var current = this.queue[this.index || 0];
+		if (on) {
+			this.original = this.queue.slice(0);
+			var rest = this.queue.slice(0);
+			rest.splice(this.index || 0, 1);
+			for (var i = rest.length - 1; i > 0; i--) {
+				var j = Math.floor(Math.random() * (i + 1));
+				var t = rest[i];
+				rest[i] = rest[j];
+				rest[j] = t;
+			}
+			this.queue = [current].concat(rest);
+			this.index = 0;
+		} else {
+			this.queue = this.original || this.queue;
+			this.original = null;
+			this.index = Math.max(0, enyo.indexOf(current, this.queue));
+		}
+		this.shuffled = !!on;
+		this.notify("queue");
+	},
+
+	// Repeat: "off", "all" (start the list again) or "one" (the same track).
+	repeat: "off",
+	cycleRepeat: function() {
+		this.repeat = {off: "all", all: "one", one: "off"}[this.repeat];
+		this.notify("queue");
+	},
+
+	// Put tracks right after the one playing.
+	playNext: function(tracks) {
+		this.addTracks(tracks, true);
+	},
+
+	addToQueue: function(tracks) {
+		this.addTracks(tracks, false);
+	},
+
+	addTracks: function(tracks, next) {
+		if (!this.queue) {
+			this.playTracks(tracks, 0);
+			return;
+		}
+		var at = next ? this.index + 1 : this.queue.length;
+		this.queue.splice.apply(this.queue, [at, 0].concat(tracks));
+		if (this.original) {
+			var oat = next ? enyo.indexOf(this.queue[this.index], this.original) + 1 : this.original.length;
+			this.original.splice.apply(this.original, [oat, 0].concat(tracks));
+		}
+		this.notify("queue");
+	},
+
+	removeAt: function(i) {
+		if (!this.queue || i < 0 || i >= this.queue.length) {
+			return;
+		}
+		var track = this.queue[i];
+		if (this.original) {
+			var o = enyo.indexOf(track, this.original);
+			if (o >= 0) {
+				this.original.splice(o, 1);
+			}
+		}
+		this.queue.splice(i, 1);
+		if (i < this.index) {
+			this.index--;
+		} else if (i === this.index) {
+			// The track playing went: carry on with what came after it.
+			this.notify("queue");
+			this.playIndex(this.index, 0);
+			return;
+		}
+		this.notify("queue");
+	},
+
+	jumpTo: function(i) {
+		this.playIndex(i, 0);
+	},
+
+	// What comes after the current track, by the repeat setting; -1 for nothing.
+	nextIndex: function() {
+		if (this.repeat === "one") {
+			return this.index;
+		}
+		if (this.index + 1 < this.queue.length) {
+			return this.index + 1;
+		}
+		return this.repeat === "all" ? 0 : -1;
 	},
 
 	playIndex: function(index, startTicks) {
@@ -65,6 +188,7 @@ enyo.kind({
 		var url = JF.api.imageUrl(track, 120);
 		this.$.art.applyStyle("background-image", url ? "url('" + url + "')" : "none");
 		this.updateDashboard();
+		this.notify("track");
 		this.startStream(startTicks || 0);
 	},
 
@@ -140,6 +264,7 @@ enyo.kind({
 		}
 		this.queue = null;
 		this.closeDashboard();
+		this.notify("track");
 		this.setShowing(false);
 	},
 
@@ -179,6 +304,7 @@ enyo.kind({
 		if (!this.dragging) {
 			this.showPosition(this.positionTicks());
 		}
+		this.notify("position");
 		if (this.ticks % 10 === 0) {
 			this.tellServer("/Sessions/Playing/Progress");
 		}
@@ -226,8 +352,14 @@ enyo.kind({
 		}
 	},
 
+	// Next, by hand: with repeat on one track, still move on.
 	nextClick: function() {
-		this.playIndex(this.index + 1, 0);
+		var next = this.index + 1 < this.queue.length ? this.index + 1 : this.repeat === "off" ? -1 : 0;
+		if (next < 0) {
+			this.stopAll();
+		} else {
+			this.playIndex(next, 0);
+		}
 	},
 
 	// Back to the start of the track, or to the one before if we are near its start.
@@ -320,6 +452,7 @@ enyo.kind({
 	},
 
 	updateDashboard: function() {
+		this.notify("state");
 		var win = this.dashboard && enyo.windows.fetchWindow("jfmusic");
 		if (win) {
 			enyo.windows.setWindowParams(win, this.dashboardInfo());
@@ -365,7 +498,12 @@ enyo.kind({
 			this.updateDashboard();
 			this.tellServer("/Sessions/Playing/Progress");
 		} else if (e.type === "ended") {
-			this.playIndex(this.index + 1, 0);
+			var next = this.nextIndex();
+			if (next < 0) {
+				this.stopAll();
+			} else {
+				this.playIndex(next, 0);
+			}
 		} else if (e.type === "error") {
 			var node = this.$.audio.hasNode();
 			var code = node && node.error ? node.error.code : "?";

@@ -19,10 +19,11 @@ enyo.kind({
 			{name: "browse", kind: "JF.BrowseView", onOpen: "openItem", onBack: "goBack"},
 			{name: "detail", kind: "JF.DetailView", onPlay: "playItem", onBack: "goBack"},
 			{name: "album", kind: "JF.AlbumView", onPlayTracks: "playTracks", onBack: "goBack"},
-			{name: "player", kind: "JF.PlayerView", onBack: "goBack"}
+			{name: "player", kind: "JF.PlayerView", onBack: "goBack"},
+			{name: "nowplayingView", kind: "JF.NowPlayingView", onBack: "goBack"}
 		]},
 		// Music keeps playing while browsing; its bar sits under every screen.
-		{name: "nowPlaying", kind: "JF.NowPlaying"},
+		{name: "nowPlaying", kind: "JF.NowPlaying", onOpen: "openNowPlaying"},
 		{name: "relay", kind: "JF.Relay"},
 		{name: "downloads", kind: "JF.Downloads"}
 	],
@@ -32,6 +33,7 @@ enyo.kind({
 		// Each entry is {view: "browse" | "detail", item: {...}}; home is the bottom.
 		this.stack = [];
 		JF.relay = this.$.relay;
+		JF.music = this.$.nowPlaying;
 		JF.downloads = this.$.downloads;
 	},
 
@@ -66,6 +68,29 @@ enyo.kind({
 	// Test playback does not report to the server, so it leaves the watch history alone.
 	testLaunch: function(params) {
 		var self = this;
+		// {playAlbum: '<id>', shuffle: true, nowPlaying: true} plays an album (or playlist)
+		// and can open the Now Playing screen.
+		if (params.playAlbum) {
+			JF.api.item(params.playAlbum, function(ok, album) {
+				if (!ok || !album) {
+					return;
+				}
+				JF.api.albumTracks(album, function(ok2, data) {
+					var tracks = (ok2 && data && data.Items) || [];
+					if (album.Type !== "Playlist") {
+						tracks = self.$.album.inOrder(tracks);  // as the album screen orders them
+					}
+					if (tracks.length) {
+						self.$.nowPlaying.playTracks(tracks, params.shuffle ? "shuffle" : 0);
+						if (params.nowPlaying) {
+							self.lastAction = 0;
+							self.openNowPlaying();
+						}
+					}
+				});
+			});
+			return;
+		}
 		// {showLogin: true} shows the sign-in screen (and its server search) without signing out.
 		if (params.showLogin) {
 			this.$.pane.selectViewByName("login");
@@ -185,7 +210,27 @@ enyo.kind({
 
 	showView: function(view, item) {
 		this.$.pane.selectViewByName(view);
-		this.$[view].open(item);
+		if (view === "nowplayingView") {
+			this.$.nowplayingView.showQueue();
+		} else {
+			this.$[view].open(item);
+		}
+		this.showMusicBar(view);
+	},
+
+	// The music bar sits under every screen except the Now Playing screen itself.
+	// The view is passed in: while the Pane is still animating, getViewName()
+	// still names the screen being left.
+	showMusicBar: function(view) {
+		this.$.nowPlaying.setShowing(!!JF.music.queue && (view || this.$.pane.getViewName()) !== "nowplayingView");
+	},
+
+	openNowPlaying: function() {
+		if (this.$.pane.getViewName() === "nowplayingView" || this.tooSoon()) {
+			return;
+		}
+		this.stack.push({view: "nowplayingView"});
+		this.showView("nowplayingView");
 	},
 
 	playItem: function(inSender, item, startTicks) {
@@ -224,6 +269,7 @@ enyo.kind({
 		} else {
 			this.$.pane.selectViewByName("home");
 			this.$.home.load();
+			this.showMusicBar("home");
 		}
 	},
 
