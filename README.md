@@ -43,6 +43,8 @@ Tap a picture for the full 1024×768 screenshot.
 | Video, controls showing | Video, full screen with subtitles |
 | [![Album and Now Playing](screenshots/album-small.png)](screenshots/album.png) | [![Music controls in the notification area](screenshots/notification-controls-small.png)](screenshots/notification-controls.png) |
 | Album, with the Now Playing bar | Music controls in the notification area, with Bluetooth AirPods |
+| [![Exhibition, music playing](screenshots/exhibition-music-small.png)](screenshots/exhibition-music.png) | [![Exhibition, artwork slideshow](screenshots/exhibition-slideshow-small.png)](screenshots/exhibition-slideshow.png) |
+| Exhibition on the dock, music playing | Exhibition on the dock, library artwork |
 
 ## Requirements
 
