@@ -33,6 +33,10 @@ enyo.kind({
 
 	create: function() {
 		this.inherited(arguments);
+		if (JF.phone) {
+			// The example address does not fit across a phone.
+			this.$.url.setHint("Server address");
+		}
 		this.$.url.setValue(JF.api.baseUrl || "");
 		this.$.user.setValue(JF.api.userName || "");
 	},

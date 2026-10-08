@@ -624,7 +624,7 @@ body {
 
 /* ---- phones ----------------------------------------------------------------
 
-   Set on <body> by App.create when the screen is under 600 pixels across in
+   Set on <html> by App.create when the screen is under 600 pixels across in
    either direction: the Pre3 is 320 x 533 at its 1.5x scale. The app is held
    upright, except for video. Experimental; tried on a Pre3 by others. */
 
@@ -743,9 +743,12 @@ body {
 }
 
 /* A movie, episode or album: the picture above the details, not beside them. */
+/* Stacked: art, then the details across the full width. As plain blocks, because
+   a flexed child of an Enyo HFlexBox is held to its narrowest width, and turned
+   upright the details became a column one word wide. */
 .jf-phone .jf-detail {
 	padding: 10px;
-	-webkit-box-orient: vertical;
+	display: block;
 }
 .jf-phone .jf-detail-art {
 	width: auto;
@@ -760,20 +763,26 @@ body {
 }
 .jf-phone .jf-detail-info {
 	padding: 10px 0 0 0;
+	width: auto !important;
 }
+/* Name, artist and the line of facts sit centered under the centered art. */
 .jf-phone .jf-detail-name {
 	font-size: 21px;
+	text-align: center;
 }
 .jf-phone .jf-album-artist {
 	font-size: 16px;
+	text-align: center;
 }
 .jf-phone .jf-detail-meta {
 	font-size: 14px;
 	margin: 4px 0 10px 0;
+	text-align: center;
 }
 /* Buttons wrap onto a second line instead of running off the screen. */
 .jf-phone .jf-detail-buttons {
 	display: block;
+	text-align: center;
 }
 .jf-phone .jf-detail-buttons .enyo-button {
 	display: inline-block;

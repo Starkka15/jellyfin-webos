@@ -47,7 +47,8 @@ enyo.kind({
 		// they get the compact layout under .jf-phone in app.css, held upright.
 		JF.phone = Math.min(window.innerWidth || 1024, window.innerHeight || 768) < 600;
 		if (JF.phone) {
-			document.body.className += " jf-phone";
+			// On <html>, not <body>: on a device renderInto(document.body) replaces the body's classes.
+			document.documentElement.className += " jf-phone";
 			if (window.PalmSystem) {
 				enyo.setAllowedOrientation("up");
 			}
