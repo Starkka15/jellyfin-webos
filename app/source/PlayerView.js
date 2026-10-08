@@ -103,6 +103,7 @@ enyo.kind({
 		this.playing = true;
 		this.paused = false;
 		this.hasPlayed = false;
+		this.wasShowing = false;
 		this.pendingSeek = null;
 		this.lastTicks = startTicks;
 		// The clock for a made stream: where it starts, plus time spent playing.
@@ -498,10 +499,13 @@ enyo.kind({
 		if (e.type === "error") {
 			var code = node.error ? node.error.code : "?";
 			JF.log("video error code " + code);
-			if (this.hasPlayed) {
+			if (this.wasShowing) {
 				// It was working: the connection dropped, often after a long pause.
+				// One try per drop: a stream that never starts again ends in the message below.
+				var ticks = this.positionTicks();
+				this.wasShowing = false;
 				this.setStatus("Reconnecting…");
-				this.startStream(this.positionTicks());
+				this.startStream(ticks);
 			} else {
 				this.setStatus("This device could not play this video (error " + code + ").");
 				this.stopTimers();
@@ -515,6 +519,9 @@ enyo.kind({
 			this.pendingSeek = null;
 			this.hasPlayed = true;
 		} else if (e.type === "playing") {
+			// Metadata alone proves nothing: a player that cannot decode the stream
+			// reports it and then fails, every time.
+			this.wasShowing = true;
 			this.paused = false;
 			this.clockRun(true);
 			this.$.pauseButton.setCaption("Pause");
