@@ -303,6 +303,39 @@ discoverAssistant.prototype.run = function(future) {
 	return future;
 };
 
+// ---- luna command: installed ------------------------------------------------
+// An app removed and installed again should start clean, but a device may keep
+// the old localStorage (a tester's Pre3 came up signed in), listing downloads
+// that are gone. Removing the app deletes the downloads folder and this marker
+// beside it (scripts/pmPreRemove.script): a missing marker means a new install.
+// Beside the folder, not in it: the download manager makes the folder as root,
+// and where /media/internal keeps owners (the emulator) the service cannot
+// write there.
+// -> {returnValue: true, existed: <was the marker there>}; it is made if not.
+// Without "existed" the marker could not be made, and nothing can be told.
+var installedAssistant = function() {};
+installedAssistant.prototype.run = function(future) {
+	var fs = require("fs");
+	var marker = "/media/internal/.jellyfin-installed";
+	var existed = true;
+	try {
+		fs.statSync(marker);
+	} catch (e) {
+		existed = false;
+	}
+	if (!existed) {
+		try {
+			fs.writeFileSync(marker, "");
+		} catch (e2) {
+			log("installed: no marker: " + e2);
+			future.result = {returnValue: true, errorText: String(e2)};
+			return future;
+		}
+	}
+	future.result = {returnValue: true, existed: existed};
+	return future;
+};
+
 // ---- luna command: space ----------------------------------------------------
 // Room left for downloads, which go to /media/internal. A web app cannot ask,
 // and node 0.4 has no statvfs, but the service jail has busybox df.

@@ -1,0 +1,7 @@
+#!/bin/sh
+# Run by webOS when the app is removed. Downloads live outside the app's own
+# folder, so nothing else would delete them. The marker beside the folder goes
+# too: without it a later install knows it is new, and forgets the old sign-in
+# (see App.js, checkInstall).
+rm -rf /media/internal/.jellyfin /media/internal/.jellyfin-installed
+exit 0

@@ -39,7 +39,10 @@ enyo.kind({
 			{caption: "Refresh", onclick: "refreshClick"},
 			{caption: "Sign Out", onclick: "signOut"}
 		]},
-		{name: "downloads", kind: "JF.Downloads"}
+		{name: "downloads", kind: "JF.Downloads"},
+		// Was the app removed and installed again? (see checkInstall)
+		{name: "installSvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/",
+			method: "installed", onResponse: "installResponse"}
 	],
 
 	create: function() {
@@ -70,21 +73,68 @@ enyo.kind({
 				this.$.mediaKeys.call({});
 				this.$.headsetKeys.call({});
 			}
-			if (JF.api.restore()) {
-				this.$.downloads.restore();
-				var self = this;
-				// Home address or signed-in address, whichever answers (see chooseAddress).
-				JF.api.chooseAddress(function() {
-					self.showHome();
-					self.$.nowPlaying.restoreState();
-					if (!self.justType(enyo.windowParams || {})) {
-						self.testLaunch(enyo.windowParams || {});
-					}
-				});
-			} else {
-				this.$.pane.selectViewByName("login");
-				this.$.login.searchServers();
+			this.checkInstall();
+		}
+	},
+
+	// webOS keeps localStorage when an app is removed, so a new install would
+	// come up signed in and listing downloads whose files are gone. The service
+	// keeps a marker beside the downloads folder, which removal deletes: once this
+	// app has seen its marker ("jf.marker"), a missing one means a new install,
+	// and everything stored is forgotten. Then on with the start.
+	checkInstall: function() {
+		var self = this;
+		var done = false;
+		var go = function(inSender, inResponse) {
+			if (done) {
+				return;
 			}
+			done = true;
+			// No "existed" in the answer: the service could not tell. Leave everything be.
+			if (inResponse && typeof inResponse.existed === "boolean") {
+				if (!inResponse.existed && localStorage.getItem("jf.marker")) {
+					JF.log("new install: forgetting what the last one stored");
+					for (var i = localStorage.length - 1; i >= 0; i--) {
+						var key = localStorage.key(i);
+						if (key && key.indexOf("jf.") === 0) {
+							localStorage.removeItem(key);
+						}
+					}
+					self.$.downloads.entries = {};
+				}
+				localStorage.setItem("jf.marker", "1");
+			}
+			self.begin();
+		};
+		if (!window.PalmSystem) {
+			go();
+			return;
+		}
+		this.installAnswer = go;
+		this.$.installSvc.call({});
+		// A service that does not answer must not keep the app from starting.
+		setTimeout(go, 4000);
+	},
+
+	installResponse: function(inSender, inResponse) {
+		this.installAnswer(inSender, inResponse);
+	},
+
+	begin: function() {
+		if (JF.api.restore()) {
+			this.$.downloads.restore();
+			var self = this;
+			// Home address or signed-in address, whichever answers (see chooseAddress).
+			JF.api.chooseAddress(function() {
+				self.showHome();
+				self.$.nowPlaying.restoreState();
+				if (!self.justType(enyo.windowParams || {})) {
+					self.testLaunch(enyo.windowParams || {});
+				}
+			});
+		} else {
+			this.$.pane.selectViewByName("login");
+			this.$.login.searchServers();
 		}
 	},
 

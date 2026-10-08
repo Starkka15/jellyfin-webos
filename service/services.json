@@ -24,6 +24,11 @@
 					"public": true
 				},
 				{
+					"name": "installed",
+					"assistant": "installedAssistant",
+					"public": true
+				},
+				{
 					"name": "space",
 					"assistant": "spaceAssistant",
 					"public": true
