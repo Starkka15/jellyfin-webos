@@ -29,6 +29,11 @@
 					"public": true
 				},
 				{
+					"name": "files",
+					"assistant": "filesAssistant",
+					"public": true
+				},
+				{
 					"name": "space",
 					"assistant": "spaceAssistant",
 					"public": true

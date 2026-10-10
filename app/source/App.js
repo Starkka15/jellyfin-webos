@@ -334,6 +334,10 @@ enyo.kind({
 	},
 
 	refreshClick: function() {
+		// The menu is there on the sign-in screen too, where there is no server to ask yet.
+		if (!JF.api.token) {
+			return;
+		}
 		this.$.home.load();
 	},
 

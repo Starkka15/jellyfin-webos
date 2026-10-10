@@ -336,6 +336,39 @@ installedAssistant.prototype.run = function(future) {
 	return future;
 };
 
+// ---- luna command: files ----------------------------------------------------
+// What is really in the downloads folder, so the app can drop its record of a
+// download whose file has gone (deleted over USB, or with the folder).
+// -> {returnValue: true, files: [names]}; an absent folder is an empty one.
+// Without "files" the folder could not be read, and nothing can be told.
+var filesAssistant = function() {};
+filesAssistant.prototype.run = function(future) {
+	var fs = require("fs");
+	var folder = "/media/internal/.jellyfin";
+	var names;
+	try {
+		names = fs.readdirSync(folder);
+	} catch (e) {
+		var gone = false;
+		try {
+			fs.statSync("/media/internal");
+			try {
+				fs.statSync(folder);
+			} catch (e2) {
+				gone = true;
+			}
+		} catch (e3) {}
+		if (!gone) {
+			log("files: cannot read the folder: " + e);
+			future.result = {returnValue: true, errorText: String(e)};
+			return future;
+		}
+		names = [];
+	}
+	future.result = {returnValue: true, files: names};
+	return future;
+};
+
 // ---- luna command: space ----------------------------------------------------
 // Room left for downloads, which go to /media/internal. A web app cannot ask,
 // and node 0.4 has no statvfs, but the service jail has busybox df.

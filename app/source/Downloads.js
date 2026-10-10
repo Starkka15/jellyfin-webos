@@ -7,7 +7,8 @@
  * local storage with no network, knows its length, and seeks at once.
  *
  * Files go in /media/internal/.jellyfin (hidden, so the Videos app does not list
- * them under item ids) as <item id>.mp4 and <item id>.jpg. A converted download
+ * them under item ids) as <item id>.mp4 and <item id>.jpg; music keeps its own
+ * type, and one <album id>.jpg serves all of an album's tracks. A converted download
  * is MPEG-TS inside, but the web engine only hands files with a known video
  * extension to the media player (ts is not one), and the player itself goes by
  * the contents, so .mp4 plays.
@@ -31,7 +32,10 @@ enyo.kind({
 			method: "deleteDownloadedFile"},
 		// Free space on /media/internal, from the app's own service (df in its jail).
 		{name: "spaceSvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/", method: "space",
-			onSuccess: "spaceAnswer", onFailure: "spaceAnswer"}
+			onSuccess: "spaceAnswer", onFailure: "spaceAnswer"},
+		// What is really in the downloads folder (see checkFiles).
+		{name: "filesSvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/", method: "files",
+			onResponse: "filesAnswer"}
 	],
 	// Left free whatever happens: webOS needs room of its own on /media/internal.
 	reserve: 300 * 1048576,
@@ -67,6 +71,43 @@ enyo.kind({
 			}
 		}
 		this.next();
+		if (window.PalmSystem) {
+			this.$.filesSvc.call({});
+		}
+	},
+
+	// A finished download whose file is no longer there (deleted over USB, or the
+	// whole folder was) is forgotten: it showed as downloaded, failed to play, and
+	// could not be downloaded again. A missing cover is just no longer pointed at.
+	filesAnswer: function(inSender, r) {
+		if (!r || !r.files || typeof r.files.length !== "number") {
+			return;  // the service could not look: leave the record alone
+		}
+		JF.log("downloads folder holds " + r.files.length + " file(s)");
+		var there = {};
+		for (var i = 0; i < r.files.length; i++) {
+			there[r.files[i]] = true;
+		}
+		var name = function(path) {
+			return String(path || "").replace(/^.*\//, "");
+		};
+		var changed = false;
+		for (var id in this.entries) {
+			var e = this.entries[id];
+			if (e.poster && !there[name(e.poster)]) {
+				e.poster = null;
+				e.posterTicket = null;
+				changed = true;
+			}
+			if (e.state === "done" && !there[name(e.file)]) {
+				JF.log("download " + id + " has lost its file: forgetting it");
+				delete this.entries[id];
+				changed = true;
+			}
+		}
+		if (changed) {
+			this.save();
+		}
 	},
 
 	save: function() {
@@ -359,14 +400,35 @@ enyo.kind({
 	// The poster follows the video, never alongside another download: the download
 	// manager's first answer carries only a ticket, so two starting at once could
 	// not be told apart.
+	// An album's tracks share one cover, saved under the album's id: the first
+	// track to finish fetches it and the rest point at the same file.
 	fetchPoster: function(e) {
+		var album = e.item.MediaType === "Audio" && e.item.AlbumId;
+		var shared = album && this.albumPoster(album, e.id);
+		if (shared) {
+			e.poster = shared.poster;
+			this.save();
+			this.next();
+			return;
+		}
 		var poster = JF.api.serverImageUrl(e.item, 440);
 		if (!poster) {
 			this.next();
 			return;
 		}
 		e.posterStarting = true;
-		this.$.dlSvc.call({target: poster, targetDir: this.folder, targetFilename: e.id + ".jpg"});
+		this.$.dlSvc.call({target: poster, targetDir: this.folder, targetFilename: (album || e.id) + ".jpg"});
+	},
+
+	// Another downloaded track of this album that already has the cover, or null.
+	albumPoster: function(albumId, notId) {
+		for (var k in this.entries) {
+			var o = this.entries[k];
+			if (k !== notId && o.poster && o.item.MediaType === "Audio" && o.item.AlbumId === albumId) {
+				return o;
+			}
+		}
+		return null;
 	},
 
 	// Stop a download in progress, or delete a finished one.
@@ -381,7 +443,20 @@ enyo.kind({
 			}
 			this.$.deleteSvc.call({ticket: e.ticket});
 		}
-		if (e.posterTicket) {
+		// A cover shared with the album's other tracks stays while any of them
+		// does; the file is deleted through its ticket, so that is handed on.
+		var sharer = null;
+		for (var k in this.entries) {
+			if (k !== id && e.poster && this.entries[k].poster === e.poster) {
+				sharer = this.entries[k];
+				break;
+			}
+		}
+		if (sharer) {
+			if (e.posterTicket && !sharer.posterTicket) {
+				sharer.posterTicket = e.posterTicket;
+			}
+		} else if (e.posterTicket) {
 			this.$.deleteSvc.call({ticket: e.posterTicket});
 		}
 		delete this.entries[id];
