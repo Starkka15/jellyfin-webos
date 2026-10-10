@@ -733,10 +733,17 @@ body {
 .jf-phone .jf-tabs {
 	margin: 8px 6px 0;
 }
+/* Five tabs across 308 pixels. Enyo gives each an equal share and 16 pixels of
+   frame either side, which left "Collections" 29 pixels and ran the names into
+   each other: a thin frame, and each tab as wide as its own name plus a share
+   of what is left over. */
 .jf-phone .jf-tabs .enyo-radiobutton {
-	font-size: 12px;
+	font-size: 11px;
 	padding-left: 0;
 	padding-right: 0;
+	border-left-width: 5px;
+	border-right-width: 5px;
+	width: auto !important;
 }
 .jf-phone .jf-more {
 	margin: 8px 10px 20px 10px;

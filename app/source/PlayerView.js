@@ -89,7 +89,7 @@ enyo.kind({
 		this.$.subtitleButton.setShowing(!this.localFile && this.subtitleStreams.length > 0);
 		// Full screen before anything plays, as Palm's player does.
 		enyo.setFullScreen(true);
-		enyo.windows.setWindowProperties(window, {blockScreenTimeout: true});
+		this.keepScreenOn(true);
 		this.lockRotation(true);
 		// Find the intro and credits first: a stream that starts inside the intro
 		// can then be asked for from the intro's end, instead of started twice.
@@ -415,9 +415,18 @@ enyo.kind({
 			try { node.pause(); } catch (e) {}
 		}
 		this.$.video.setSrc("");
-		enyo.windows.setWindowProperties(window, {blockScreenTimeout: false});
+		this.keepScreenOn(false);
 		this.lockRotation(false);
 		enyo.setFullScreen(false);
+	},
+
+	// LuneOS's PalmSystem has no setWindowProperties, and Enyo calls it without
+	// checking, so the TypeError stopped playback before the video loaded.
+	keepScreenOn: function(on) {
+		if (!window.PalmSystem || typeof PalmSystem.setWindowProperties != "function") {
+			return;
+		}
+		enyo.windows.setWindowProperties(window, {blockScreenTimeout: on});
 	},
 
 	// Hold the screen in the video's orientation while it plays, as HP's video
