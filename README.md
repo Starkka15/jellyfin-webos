@@ -15,6 +15,8 @@ A Jellyfin client for the HP TouchPad, written in Enyo 1 (the TouchPad's own fra
   under Just Type's Search Using preferences)
 - Full-screen video player with seeking, ±30 s, audio track and subtitle choice
 - Resume where you left off, and play the next episode automatically
+- Skip intros and credits by itself or with a Skip button (app menu, Intros and Credits), where the
+  server has found them with its Intro Skipper plugin
 - Download movies, episodes or whole seasons to watch offline, choosing audio, subtitles and quality;
   download albums, playlists and tracks to listen offline. The app warns before a download that may
   not fit, and what you watch offline reaches the server once it can be reached again

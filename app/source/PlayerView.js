@@ -35,6 +35,9 @@ enyo.kind({
 			{name: "header", kind: "HFlexBox", align: "center", className: "jf-player-top", components: [
 				{kind: "Button", caption: "Done", onclick: "doneClick"},
 				{name: "title", content: "", flex: 1, className: "jf-player-title"},
+				// There only during an intro or the credits (see checkSegment).
+				{name: "skipButton", kind: "Button", caption: "Skip Intro", showing: false, onclick: "skipClick",
+					className: "enyo-button-affirmative"},
 				{name: "audioButton", kind: "Button", caption: "Audio", onclick: "audioClick"},
 				{name: "subtitleButton", kind: "Button", caption: "Subtitles", onclick: "subtitleClick"}
 			]},
@@ -88,7 +91,135 @@ enyo.kind({
 		enyo.setFullScreen(true);
 		enyo.windows.setWindowProperties(window, {blockScreenTimeout: true});
 		this.lockRotation(true);
-		this.startStream(startTicks || 0);
+		// Find the intro and credits first: a stream that starts inside the intro
+		// can then be asked for from the intro's end, instead of started twice.
+		var self = this;
+		var request = this.request = {};
+		this.playing = true;
+		this.skipped = {};
+		this.setSegment(null);
+		this.setStatus("Starting…");
+		this.loadSegments(item, function() {
+			if (request === self.request) {
+				self.startStream(self.pastIntro(startTicks || 0));
+			}
+		});
+	},
+
+	// ---- intros and credits ---------------------------------------------------
+
+	// A download carries its own; otherwise ask the server, but do not hold the
+	// video up for it: after three seconds playback starts without.
+	loadSegments: function(item, callback) {
+		var self = this;
+		var entry = JF.downloads ? JF.downloads.get(item.Id) : null;
+		this.segments = entry && entry.segments ? entry.segments : [];
+		if (this.segments.length || JF.api.skipMode() === "off") {
+			callback();
+			return;
+		}
+		var waiting = true;
+		var go = function() {
+			if (waiting) {
+				waiting = false;
+				clearTimeout(timer);
+				callback();
+			}
+		};
+		var timer = setTimeout(go, 3000);
+		JF.api.segments(item.Id, function(list) {
+			if (self.item === item) {
+				self.segments = list;
+				// A download made before the app kept these.
+				if (entry && list.length) {
+					entry.segments = list;
+					JF.downloads.save();
+				}
+			}
+			go();
+		});
+	},
+
+	// The intro or credits at this time, unless they are all but over.
+	segmentAt: function(ticks) {
+		var list = this.segments || [];
+		for (var i = 0; i < list.length; i++) {
+			if (ticks >= list[i].StartTicks && ticks < list[i].EndTicks - 30000000) {
+				return list[i];
+			}
+		}
+		return null;
+	},
+
+	// Do the credits run to the end (within ten seconds of it)?
+	runsToEnd: function(segment) {
+		var total = this.durationTicks();
+		return !!total && segment.EndTicks >= total - 100000000;
+	},
+
+	// Where to start when asked to start at ticks: after the intro, if that is
+	// where ticks falls and intros are skipped automatically.
+	pastIntro: function(ticks) {
+		var segment = JF.api.skipMode() === "auto" ? this.segmentAt(ticks) : null;
+		if (!segment || this.runsToEnd(segment)) {
+			return ticks;
+		}
+		this.skipped[segment.Id] = true;
+		JF.log("starting after the " + segment.Type + " at " + JF.api.ticksToClock(segment.EndTicks));
+		return segment.EndTicks;
+	},
+
+	setSegment: function(segment) {
+		this.segment = segment;
+		if (segment) {
+			this.$.skipButton.setCaption(segment.Type === "Intro" ? "Skip Intro" : "Skip Credits");
+		}
+		this.$.skipButton.setShowing(!!segment);
+	},
+
+	// Once a second while playing. Each intro or credits is skipped by itself
+	// once: after going back into one, there is the button.
+	checkSegment: function() {
+		var mode = JF.api.skipMode();
+		if (!this.info || !this.wasShowing || this.paused || this.dragging || mode === "off") {
+			return;
+		}
+		var segment = this.segmentAt(this.positionTicks());
+		if (segment === this.segment) {
+			return;
+		}
+		this.setSegment(segment);
+		if (!segment) {
+			return;
+		}
+		// A film's credits are left to the button: a scene may follow them.
+		var auto = mode === "auto" && !this.skipped[segment.Id] &&
+			!(this.runsToEnd(segment) && this.item.Type !== "Episode");
+		if (auto) {
+			this.skipSegment(segment);
+		} else {
+			this.showControls();
+		}
+	},
+
+	skipClick: function() {
+		if (this.segment) {
+			this.skipSegment(this.segment);
+		}
+	},
+
+	skipSegment: function(segment) {
+		this.skipped[segment.Id] = true;
+		this.setSegment(null);
+		JF.log("skipping the " + segment.Type + " to " + JF.api.ticksToClock(segment.EndTicks));
+		if (this.runsToEnd(segment)) {
+			// Nothing after the credits: this is the end, and the server hears it
+			// as watched to the end, so the next episode comes up next.
+			this.reportTicks = this.durationTicks();
+			this.finished();
+		} else {
+			this.seekTo(segment.EndTicks);
+		}
 	},
 
 	// Ask the server how to play the item with the current audio and subtitle
@@ -226,6 +357,7 @@ enyo.kind({
 		if (this.ticks % 10 === 0) {
 			this.tellServer("/Sessions/Playing/Progress");
 		}
+		this.checkSegment();
 		// Keep the relay service running; it stops 120 s after its last call.
 		if (this.relayed && this.ticks % 30 === 0) {
 			JF.relay.ping();
@@ -250,7 +382,7 @@ enyo.kind({
 		// Kept and sent later if there is no connection (a download watched offline).
 		JF.api.report(path, {
 			ItemId: this.item.Id, MediaSourceId: this.info.mediaSourceId, PlaySessionId: this.info.playSessionId,
-			PositionTicks: this.positionTicks(), IsPaused: !!this.paused,
+			PositionTicks: this.reportTicks || this.positionTicks(), IsPaused: !!this.paused,
 			PlayMethod: this.info.method, CanSeek: true,
 			AudioStreamIndex: this.audioIndex, SubtitleStreamIndex: this.subtitleIndex
 		}, this.item.RunTimeTicks);
@@ -273,6 +405,7 @@ enyo.kind({
 		this.clockRun(false);
 		this.stopTimers();
 		this.tellServer("/Sessions/Playing/Stopped");
+		this.reportTicks = 0;
 		this.endEncoding();
 		this.playing = false;
 		this.request = null;

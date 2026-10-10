@@ -37,7 +37,17 @@ enyo.kind({
 		// Under the app's name, top left. On a phone, Refresh and Sign Out live only here.
 		{kind: "AppMenu", components: [
 			{caption: "Refresh", onclick: "refreshClick"},
+			{caption: "Intros and Credits", onclick: "skipMenuClick"},
 			{caption: "Sign Out", onclick: "signOut"}
+		]},
+		// What the player does at an intro or the credits (JF.api.skipMode).
+		{name: "skipDialog", kind: "ModalDialog", caption: "Intros and Credits", lazy: false, components: [
+			{className: "jf-dialog-note", content: "When a video reaches its intro or its credits:"},
+			{name: "skipAuto", kind: "Button", caption: "Skip Them", mode: "auto", onclick: "skipModeClick"},
+			{name: "skipButton", kind: "Button", caption: "Show a Skip Button", mode: "button", onclick: "skipModeClick"},
+			{name: "skipOff", kind: "Button", caption: "Do Nothing", mode: "off", onclick: "skipModeClick"},
+			{className: "jf-dialog-note", content: "The server finds them with its Intro Skipper plugin."},
+			{kind: "Button", caption: "Cancel", onclick: "skipDialogClose"}
 		]},
 		{name: "downloads", kind: "JF.Downloads"},
 		// Was the app removed and installed again? (see checkInstall)
@@ -325,6 +335,25 @@ enyo.kind({
 
 	refreshClick: function() {
 		this.$.home.load();
+	},
+
+	skipMenuClick: function() {
+		var mode = JF.api.skipMode();
+		var buttons = [this.$.skipAuto, this.$.skipButton, this.$.skipOff];
+		this.$.skipDialog.openAtCenter();
+		// The choice in force is the highlighted one.
+		for (var i = 0; i < buttons.length; i++) {
+			buttons[i].addRemoveClass("enyo-button-affirmative", buttons[i].mode === mode);
+		}
+	},
+
+	skipModeClick: function(inSender) {
+		localStorage.setItem("jf.skipSegments", inSender.mode);
+		this.$.skipDialog.close();
+	},
+
+	skipDialogClose: function() {
+		this.$.skipDialog.close();
 	},
 
 	signOut: function() {

@@ -296,6 +296,29 @@ JF.api = {
 		this.get("/Items/" + id, {userId: this.userId}, callback);
 	},
 
+	// A video's intro and credits, where the server knows them (its media
+	// segments, which the Intro Skipper plugin fills in).
+	// callback([{Id, Type: "Intro" | "Outro", StartTicks, EndTicks}])
+	segments: function(id, callback) {
+		this.get("/MediaSegments/" + id + "?includeSegmentTypes=Intro&includeSegmentTypes=Outro", null, function(ok, data) {
+			var items = ok && data && data.Items ? data.Items : [];
+			var out = [];
+			for (var i = 0; i < items.length; i++) {
+				if (items[i].EndTicks > items[i].StartTicks) {
+					out.push({Id: items[i].Id, Type: items[i].Type, StartTicks: items[i].StartTicks, EndTicks: items[i].EndTicks});
+				}
+			}
+			callback(out);
+		});
+	},
+
+	// What the player does at an intro or the credits: "auto" skips them,
+	// "button" offers to, "off" leaves them alone.
+	skipMode: function() {
+		var mode = localStorage.getItem("jf.skipSegments");
+		return mode === "button" || mode === "off" ? mode : "auto";
+	},
+
 	nextUp: function(callback) {
 		this.get("/Shows/NextUp", {userId: this.userId, limit: 12, fields: "PrimaryImageAspectRatio"}, callback);
 	},

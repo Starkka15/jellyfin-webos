@@ -330,6 +330,15 @@ enyo.kind({
 					return;
 				}
 				JF.log("download " + e.id + " " + info.method);
+				// Kept with the download, so intros can be skipped offline too.
+				if (e.item.MediaType !== "Audio") {
+					JF.api.segments(e.id, function(list) {
+						if (self.entries[e.id] === e && list.length) {
+							e.segments = list;
+							self.save();
+						}
+					});
+				}
 				e.starting = true;
 				self.$.dlSvc.call({target: info.url, targetDir: self.folder, targetFilename: e.id + self.extension(e, info)});
 			});
