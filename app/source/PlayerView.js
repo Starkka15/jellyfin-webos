@@ -239,6 +239,7 @@ enyo.kind({
 		this.paused = false;
 		this.byHand = false;
 		this.interrupted = false;
+		this.wentAway = false;
 		this.hasPlayed = false;
 		this.wasShowing = false;
 		this.pendingSeek = null;
@@ -503,9 +504,11 @@ enyo.kind({
 		if (!node || !this.playing) {
 			return;
 		}
-		if (this.paused && this.interrupted) {
-			// The system took the player away while the card was not in front;
-			// what is left cannot simply be told to play.
+		if (this.paused && (this.interrupted || this.wentAway)) {
+			// The player was taken apart while the card was away or the tablet
+			// slept (which can happen while paused by hand, now that a pause lets
+			// the screen sleep): what is left cannot simply be told to play, so
+			// start the stream afresh from where it stopped.
 			this.resumeAfterInterruption();
 			return;
 		}
@@ -547,8 +550,21 @@ enyo.kind({
 		var ticks = this.interruptedAt || this.lastTicks || 0;
 		JF.log("back in front: carrying on from " + JF.api.ticksToClock(ticks));
 		this.interrupted = false;
+		this.wentAway = false;
 		this.tellServer("/Sessions/Playing/Stopped");
 		this.startStream(ticks);
+	},
+
+	// The card is leaving the front (card view, another app, the screen going off,
+	// the tablet sleeping). webOS tears the player and the stream apart, so
+	// remember where we are — even when paused by hand, which records nothing on
+	// its own — so a later Play starts afresh from here instead of a dead stream.
+	leftFront: function() {
+		if (!this.playing) {
+			return;
+		}
+		this.interruptedAt = this.positionTicks();
+		this.wentAway = true;
 	},
 
 	// Headphones unplugged: pause rather than play out loud.
@@ -720,12 +736,17 @@ enyo.kind({
 			this.paused = false;
 			this.byHand = false;
 			this.clockRun(true);
+			// Playing again: hold the screen awake once more.
+			this.keepScreenOn(true);
 			this.$.pauseButton.setCaption("Pause");
 			this.setStatus("");
 			this.watchDecoder();
 		} else if (e.type === "pause") {
 			this.paused = true;
 			this.clockRun(false);
+			// Paused: let the screen dim and sleep as it normally would, so a movie
+			// left paused does not hold the display on. It comes back on resume.
+			this.keepScreenOn(false);
 			if (!this.byHand) {
 				// Not the Pause button: the system stopped it (see cameBack).
 				this.interrupted = true;

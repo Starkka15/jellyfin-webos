@@ -492,6 +492,9 @@ enyo.kind({
 
 	windowDeactivated: function() {
 		this.$.nowPlaying.appInBackground(true);
+		// The card is leaving the front: let the player remember its place before
+		// webOS tears the stream down, so a paused video resumes where it stopped.
+		this.$.player.leftFront();
 	},
 
 	// The dashboard's buttons arrive as window params.
