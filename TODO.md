@@ -67,10 +67,32 @@ The rest are stock webOS 3 features the app does not use yet.
 - [x] Collections, as a tab in movie libraries
 - [x] Sort and categories for movies and shows: Unwatched, Favorites, Genres, Studios
 
+## Next
+
+Roughly in the order to do them.
+
+- [x] **Skip intros and credits.** Done: by itself or with a Skip button (app menu,
+  Intros and Credits), from the media segments the server's Intro Skipper plugin makes.
+- [ ] **The phone release.** The Pre3 video failure and a layout check on a real phone
+  (see Known issues); the phone tab bar and the LuneOS playback fix are in as work in
+  progress and not yet checked on those devices.
+- [ ] **Skip recaps and previews too.** The server marks them the same way (segment types
+  Recap and Preview); same three choices as for intros and credits.
+- [ ] **Chapters.** A Chapters menu in the player, beside Audio and Subtitles, to jump
+  to one. The server sends the list with the item.
+- [ ] **Lyrics** on the Now Playing screen, for tracks the server has them for.
+- [ ] **Play To.** The tablet as a target in other Jellyfin apps: pick something on a
+  phone and it plays here. The biggest piece: it needs a live connection to the server.
+- [ ] **A real icon.**
+- [ ] **Streaming quality.** Check whether streaming has a quality choice as downloads
+  do; if not, add one for watching away from home.
+
 ## Later
 
 - [ ] Live TV, for servers that have it. Left out of 0.4.0: there was no tuner or IPTV
   source to build and test it against.
+- [ ] Seek-preview thumbnails (the server's trickplay images). Anything drawn over the
+  video drops the TouchPad's playback to a few frames a second, so only while paused.
 
 ## Known issues
 
