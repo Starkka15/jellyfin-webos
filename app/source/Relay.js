@@ -12,6 +12,10 @@ enyo.kind({
 		{name: "relaySvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/", method: "relay",
 			onResponse: "relayResponse"},
 		{name: "pingSvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/", method: "ping"},
+		{name: "resetAudioSvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/", method: "resetAudio",
+			onResponse: "audioReset"},
+		{name: "decoderSvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/", method: "decoder",
+			onResponse: "decoderAnswered"},
 		{name: "discoverSvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/", method: "discover",
 			onResponse: "discovered"}
 	],
@@ -62,6 +66,39 @@ enyo.kind({
 		this.discoverCallback = null;
 		if (callback) {
 			callback((inResponse && inResponse.servers) || []);
+		}
+	},
+
+	// How many pictures the TouchPad's video decoder has made since it started:
+	// callback(count), or callback(-1) where that cannot be told.
+	decoderCount: function(callback) {
+		if (!window.PalmSystem) {
+			callback(-1);
+			return;
+		}
+		// Extra properties given here end up on the request the handler receives.
+		this.$.decoderSvc.call({}, {jfCallback: callback});
+	},
+
+	decoderAnswered: function(inSender, inResponse, inRequest) {
+		var count = inResponse && typeof inResponse.count === "number" ? inResponse.count : -1;
+		if (inRequest && inRequest.jfCallback) {
+			inRequest.jfCallback(count);
+		}
+	},
+
+	// Have the TouchPad close and reopen its sound output: callback(done).
+	resetAudio: function(callback) {
+		if (!window.PalmSystem) {
+			callback(false);
+			return;
+		}
+		this.$.resetAudioSvc.call({}, {jfCallback: callback});
+	},
+
+	audioReset: function(inSender, inResponse, inRequest) {
+		if (inRequest && inRequest.jfCallback) {
+			inRequest.jfCallback(!!(inResponse && inResponse.done));
 		}
 	},
 

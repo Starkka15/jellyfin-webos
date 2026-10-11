@@ -202,6 +202,70 @@ pingAssistant.prototype.run = function(future) {
 	return future;
 };
 
+// -> {count}: how many times the TouchPad's video decoder has reported in since
+// the tablet started (its line in /proc/interrupts), or -1 on a device that has
+// no such decoder. The number rises with every picture decoded, so a number
+// that stands still while a video is "playing" means no picture is being made.
+var decoderAssistant = function() {};
+decoderAssistant.prototype.run = function(future) {
+	var count = -1;
+	try {
+		var lines = require("fs").readFileSync("/proc/interrupts", "utf8").split("\n");
+		for (var i = 0; i < lines.length; i++) {
+			if (/\svidc\s*$/.test(lines[i])) {
+				// " 81:   195143   0   GIC  vidc": a count for each processor.
+				var parts = lines[i].replace(/^\s*\d+:/, "").replace(/^\s+/, "").split(/\s+/);
+				count = 0;
+				for (var k = 0; k < parts.length && /^\d+$/.test(parts[k]); k++) {
+					count += Number(parts[k]);
+				}
+				break;
+			}
+		}
+	} catch (e) {}
+	future.result = {returnValue: true, count: count};
+	return future;
+};
+
+// -> {done}: close the TouchPad's sound output and open it again.
+//
+// When the decoder stands still (see "decoder"), the cause found so far was not
+// the decoder: the player was waiting on the sound system (PulseAudio), which
+// had hung after the tablet slept with a video open. Restarting PulseAudio and
+// audiod brought video back without restarting the tablet, but that takes
+// rights this service does not have. What it may do is tell PulseAudio to
+// suspend its output and resume it, which makes it let go of the sound device
+// and take it up again. Whether that is enough to clear the hang has not been
+// seen yet: the hang could not be brought back to try it on. It does no harm
+// to a working tablet (sound drops out for a moment).
+var resetAudioAssistant = function() {};
+resetAudioAssistant.prototype.run = function(future) {
+	var spawn = require("child_process").spawn;
+	var steps = [["suspend-sink", "pcm_output", "1"], ["suspend-sink", "pcm_output", "0"]];
+	var worst = 0;
+	(function next() {
+		var step = steps.shift();
+		if (!step) {
+			console.log("[jfrelay] sound output suspended and resumed: pactl said " + worst);
+			future.result = {returnValue: true, done: worst === 0};
+			return;
+		}
+		var child;
+		try {
+			child = spawn("/usr/bin/pactl", step);
+		} catch (e) {
+			future.result = {returnValue: true, done: false};
+			return;
+		}
+		child.on("exit", function(code) {
+			worst = Math.max(worst, code === null || code === undefined ? 255 : code);
+			// A moment between letting go and taking up again.
+			setTimeout(next, 400);
+		});
+	})();
+	return future;
+};
+
 // Every address on the local networks the tablet is on: callback([ip]).
 // Read from the kernel's routing table, whose network and mask columns are
 // little-endian hex (0004A8C0 / 00FCFFFF is 192.168.4.0 / 255.255.252.0).

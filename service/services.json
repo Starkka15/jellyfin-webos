@@ -19,6 +19,16 @@
 					"public": true
 				},
 				{
+					"name": "decoder",
+					"assistant": "decoderAssistant",
+					"public": true
+				},
+				{
+					"name": "resetAudio",
+					"assistant": "resetAudioAssistant",
+					"public": true
+				},
+				{
 					"name": "discover",
 					"assistant": "discoverAssistant",
 					"public": true

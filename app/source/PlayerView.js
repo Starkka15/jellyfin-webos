@@ -17,6 +17,9 @@
  * time, as the Plex client resumes. (HLS was tried and dropped: the TouchPad's
  * HLS reader stalls after a jump and loses the picture or the sound.)
  */
+// How long after a video says it is playing its decoder is given to show it is.
+JF.DECODER_WAIT = 6000;
+
 enyo.kind({
 	name: "JF.PlayerView",
 	kind: enyo.VFlexBox,
@@ -96,6 +99,7 @@ enyo.kind({
 		var self = this;
 		var request = this.request = {};
 		this.playing = true;
+		this.triedAgain = false;
 		this.skipped = {};
 		this.setSegment(null);
 		this.setStatus("Starting…");
@@ -233,6 +237,8 @@ enyo.kind({
 		this.info = null;
 		this.playing = true;
 		this.paused = false;
+		this.byHand = false;
+		this.interrupted = false;
 		this.hasPlayed = false;
 		this.wasShowing = false;
 		this.pendingSeek = null;
@@ -497,12 +503,52 @@ enyo.kind({
 		if (!node || !this.playing) {
 			return;
 		}
+		if (this.paused && this.interrupted) {
+			// The system took the player away while the card was not in front;
+			// what is left cannot simply be told to play.
+			this.resumeAfterInterruption();
+			return;
+		}
 		if (this.paused) {
 			node.play();
 		} else {
+			// Paused by hand: it stays paused when the card comes back.
+			this.byHand = true;
 			node.pause();
 		}
 		this.showControls();
+	},
+
+	// ---- the card going away and coming back ----
+	//
+	// When the card leaves the front (card view, another app, the screen going
+	// off, the tablet sleeping), webOS pauses the video and takes its player
+	// apart: the decoder is closed and the stream's connection dropped. The
+	// video element still says "paused", but play() does nothing useful then.
+	// So a pause that the person did not ask for is remembered, and when the
+	// card is in front again the stream is started afresh from where it stopped.
+
+	// The card is in front again (from the app).
+	cameBack: function() {
+		var self = this;
+		var request = this.request;
+		if (!this.playing) {
+			return;
+		}
+		// The system's pause can reach us a moment after the card is back.
+		setTimeout(function() {
+			if (request === self.request && self.playing && self.paused && self.interrupted) {
+				self.resumeAfterInterruption();
+			}
+		}, 700);
+	},
+
+	resumeAfterInterruption: function() {
+		var ticks = this.interruptedAt || this.lastTicks || 0;
+		JF.log("back in front: carrying on from " + JF.api.ticksToClock(ticks));
+		this.interrupted = false;
+		this.tellServer("/Sessions/Playing/Stopped");
+		this.startStream(ticks);
 	},
 
 	// Headphones unplugged: pause rather than play out loud.
@@ -664,18 +710,90 @@ enyo.kind({
 			// Metadata alone proves nothing: a player that cannot decode the stream
 			// reports it and then fails, every time.
 			this.wasShowing = true;
+			if (this.interrupted) {
+				// The system has started the video again by itself, by asking for
+				// the same address: that plays from where the stream first began,
+				// not from where it stopped.
+				this.resumeAfterInterruption();
+				return;
+			}
 			this.paused = false;
+			this.byHand = false;
 			this.clockRun(true);
 			this.$.pauseButton.setCaption("Pause");
 			this.setStatus("");
+			this.watchDecoder();
 		} else if (e.type === "pause") {
 			this.paused = true;
 			this.clockRun(false);
+			if (!this.byHand) {
+				// Not the Pause button: the system stopped it (see cameBack).
+				this.interrupted = true;
+				this.interruptedAt = this.positionTicks();
+				JF.log("paused by the system at " + JF.api.ticksToClock(this.interruptedAt));
+			}
 			this.$.pauseButton.setCaption("Play");
 			this.tellServer("/Sessions/Playing/Progress");
 		} else if (e.type === "ended") {
 			this.finished();
 		}
+	},
+
+	// The TouchPad's player can say "playing" while its video decoder stands
+	// still: no picture, no sound, and no error either. (Seen on a TouchPad that
+	// had been put to sleep with a video open: its sound system had hung, and the
+	// player waits on that. Every video after that did it until the sound system
+	// was restarted.) So, once a video says it is playing, look at the decoder's
+	// own count twice. If it has not moved, have the sound output closed and
+	// reopened and start the stream again, once; if that does it too, say what
+	// is wrong.
+	watchDecoder: function() {
+		var self = this;
+		var request = this.request;
+		if (this.watching || !JF.relay) {
+			return;
+		}
+		this.watching = true;
+		JF.relay.decoderCount(function(before) {
+			setTimeout(function() {
+				JF.relay.decoderCount(function(after) {
+					self.watching = false;
+					if (request !== self.request || !self.playing || self.paused) {
+						return;  // stopped, paused or moved on meanwhile
+					}
+					if (before < 0 || after < 0) {
+						return;  // not a device where this can be told
+					}
+					if (after !== before) {
+						if (self.triedAgain) {
+							JF.log("video is running again after the sound output was reset");
+						}
+						self.triedAgain = false;
+						return;  // pictures are being made
+					}
+					JF.log("the video decoder has not moved in " + (JF.DECODER_WAIT / 1000) + " s (count " + after + ")");
+					if (!self.triedAgain) {
+						self.triedAgain = true;
+						var from = self.startTicks;
+						self.tellServer("/Sessions/Playing/Stopped");
+						self.setStatus("Starting again…");
+						JF.relay.resetAudio(function(done) {
+							JF.log("sound output reset: " + (done ? "done" : "could not be done"));
+							if (request === self.request && self.playing) {
+								self.startStream(from);
+							}
+						});
+						return;
+					}
+					self.stopStream();
+					self.setStatus("The TouchPad's video player has stopped responding. Restart the TouchPad " +
+						"(hold the power button, then Shut Down, then turn it on again) and play this again.");
+					self.showControls();
+					// Leave the way out on screen.
+					self.clearControlsTimer();
+				});
+			}, JF.DECODER_WAIT);
+		});
 	},
 
 	// The video ran to its end: go on to the next episode if there is one.

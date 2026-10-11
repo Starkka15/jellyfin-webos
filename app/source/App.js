@@ -482,6 +482,8 @@ enyo.kind({
 	// The music controls go in the notification area while the app is in the background.
 	windowActivated: function() {
 		this.$.nowPlaying.appInBackground(false);
+		// A video the system stopped while the card was away carries on.
+		this.$.player.cameBack();
 		// Coming back may mean coming home, or leaving: check which address answers.
 		if (JF.api.token && new Date().getTime() - (JF.api.lastChoice || 0) > 60000) {
 			JF.api.chooseAddress(function() {});
