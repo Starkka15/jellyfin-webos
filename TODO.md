@@ -101,5 +101,10 @@ Roughly in the order to do them.
 
 - [ ] After a seek or track change, a converted stream takes a few seconds to start.
 - [ ] A tap sometimes arrives twice; a 700 ms repeat filter covers it, cause unknown.
+- [ ] Check playback on stock webOS 3.0.5. Since the TouchPad playback update, plain
+  http streams (the home address) go through the stream relay too, not only https.
+  The relay runs `/usr/bin/curl`; on Community Edition that hands off to its newer curl,
+  on stock 3.0.5 it is the old built-in one. It should fetch http fine, but this is
+  untested: play something from the home address on a 3.0.5 TouchPad and seek once.
 - [ ] Wired headset button and unplug-to-pause are untested (no wired headphones to hand);
   the dashboard and Bluetooth buttons are tested.
