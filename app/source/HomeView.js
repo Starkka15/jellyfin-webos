@@ -12,7 +12,7 @@ enyo.kind({
 	components: [
 		{kind: "PageHeader", className: "jf-header", components: [
 			// On a phone only the search fits; Refresh and Sign Out are in the app menu.
-			{name: "title", content: "Emby", flex: 1, className: "jf-header-title jf-wide-only"},
+			{name: "title", content: "Jellyfin", flex: 1, className: "jf-header-title jf-wide-only"},
 			{name: "search", kind: "Input", hint: "Search", className: "jf-search",
 				autoCapitalize: "lowercase", autocorrect: false, spellcheck: false, onkeypress: "searchKey"},
 			{kind: "Button", caption: "Search", onclick: "searchClick"},

@@ -76,7 +76,7 @@ var MINI_PROBE_TTL = 300000;
 var MINI_PROBE_MAX = 16;
 var MINI_PROBE_TIMEOUT = 20000;
 // A warm request is deliberately shorter than the player's own cold-start
-// window.  It may wait for the Mini to have enough output buffered, but must
+// window.  It may wait for the bridge to have enough output buffered, but must
 // not leave the webOS card waiting forever.
 var MINI_WARM_TIMEOUT = 34000;
 var miniProbeCache = {};
@@ -251,7 +251,7 @@ JF.miniVideoUrl = function(item, source, audioIndex, startTicks) {
 	});
 };
 
-// Ask the Mini to pre-open exactly one already validated stream.  The stream
+// Ask the bridge to pre-open exactly one already validated stream.  The stream
 // URL is intentionally the only input: accepting a server-provided warm or
 // ready URL here would turn this helper into an unrestricted HTTP client.  On
 // success callback receives the locally constructed /ready/<sessionId> URL;

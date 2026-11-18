@@ -26,7 +26,9 @@ The rest are stock webOS 3 features the app does not use yet.
   dropped: it needs a second device to approve the sign-in.)
 - [x] **Home or away.** Done in 0.4.0: when the server signed in to over https
   is also found on the home network, the app remembers its home address and uses
-  it whenever it answers (no relay, faster seeking), falling back to https when away.
+  it whenever it answers (plain http, faster seeking), falling back to https when away.
+  Since the TouchPad playback update both go through the stream relay, which keeps
+  the server address and token out of the media player's logs.
 
 ## Smaller wins
 

@@ -1,9 +1,10 @@
 /* The app: one Pane holding the five screens, and a stack of where we have been. */
 
 // Video playback stays deliberately separate from audio playback.  The two
-// choices are kept small: which player is used, and whether the Mac mini must
+// choices are kept small: which player is used, and whether the LAN media bridge must
 // transcode.  A boolean is still accepted for older launch scripts that passed
-// forceMac as the fourth argument to playItem().
+// forceMac as the fourth argument to playItem(). Internally "mini" and
+// "forceMac" name the bridge route; the names are kept so saved settings still load.
 JF.playbackSettings = function(value) {
 	var get = function(key) {
 		try { return localStorage.getItem(key); } catch (e) { return ""; }
@@ -46,7 +47,7 @@ JF.videoRoute = function(item, source, startTicks, audioIndex, forceMac) {
 		mediaSourceId: source.Id || item.Id, startSeconds: seconds};
 };
 
-// Open the relay only after the Mini has an encoder and startup buffer ready.
+// Open the relay only after the bridge has an encoder and startup buffer ready.
 // The player receives an opaque loopback URL after this callback succeeds.
 JF.openVideoRoute = function(route, callback) {
 	if (!route.warm) {
@@ -661,7 +662,7 @@ enyo.kind({
 	// A non-direct or forced route must be checked by the configured Mini before
 	// opening either player. This keeps a known-unsupported source (notably
 	// Dolby Vision Profile 5) out of the transcoding path, while keeping direct
-	// and downloaded playback independent of the Mini.
+	// and downloaded playback independent of the bridge.
 	probeAndOpenVideo: function(item, startTicks, source, settings) {
 		var self = this;
 		var attempt = this.videoOpenAttempt;
@@ -739,11 +740,11 @@ enyo.kind({
 					return;
 				}
 				self.$.detail.$.note.setContent(route.direct ? "System player · direct" : "System player · LAN bridge");
-				JF.log(route.direct ? "system play direct" : "system play via Mac mini");
+				JF.log(route.direct ? "system play direct" : "system play via the LAN bridge");
 				// The installed player forces .mkv URLs through an Ogg workaround.
 				// Keep an opaque .mp4 alias so it detects the actual HTTP media type.
 				self.$.systemVideoSvc.call({id: "com.palm.app.videoplayer", params: {
-					target: localUrl + "/video.mp4", title: "Emby", initialPos: route.direct ? route.startSeconds : 0
+					target: localUrl + "/video.mp4", title: item.Name || "Video", initialPos: route.direct ? route.startSeconds : 0
 				}});
 			});
 	},

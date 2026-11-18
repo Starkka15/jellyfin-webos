@@ -73,7 +73,7 @@ enyo.kind({
 			]}
 		]},
 		// These are deliberately independent: the chosen player and whether the
-		// Mac mini is required answer two different questions.
+		// LAN bridge is required answer two different questions.
 		{name: "playDialog", kind: "ModalDialog", className: "jf-detail-settings", caption: "Playback settings", lazy: false, components: [
 			{kind: "RowGroup", components: [
 				{kind: "Item", layoutKind: "HFlexLayout", align: "center", components: [

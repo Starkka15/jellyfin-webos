@@ -157,7 +157,7 @@ let route = routePlayer();
 assert.strictEqual(Player.sourceCaption.call(route.player), 'Source: H.264 · 1920×1080 · 8-bit · AAC stereo');
 assert.strictEqual(Player.routeCaption.call(route.player), 'Route: direct');
 route.player.info = {method: 'MacMini'};
-assert.strictEqual(Player.routeCaption.call(route.player), 'Route: Mac mini conversion');
+assert.strictEqual(Player.routeCaption.call(route.player), 'Route: LAN bridge conversion');
 
 // Mini conversion is session-only and starts only after the exact selected
 // source has passed the existing probe.

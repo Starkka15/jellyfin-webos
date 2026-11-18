@@ -139,7 +139,7 @@ enyo.kind({
 					{name: "moreSource", className: "jf-player-panel-meta", showing: false},
 					{name: "routeActions", kind: "HFlexBox", className: "jf-player-panel-actions", showing: false, components: [
 						{name: "autoRoute", kind: "Button", caption: "Auto", onclick: "chooseAuto", flex: 1},
-						{name: "miniRoute", kind: "Button", caption: "Mac mini", onclick: "chooseMini", flex: 1}
+						{name: "miniRoute", kind: "Button", caption: "LAN bridge", onclick: "chooseMini", flex: 1}
 					]}
 				]},
 				{name: "loopSection", className: "jf-player-panel-section", showing: false, components: [
@@ -433,7 +433,7 @@ enyo.kind({
 		this.cancelMiniWarm = null;
 		this.stopTimers();
 		this.endEncoding();
-		// Release the Mini's single FFmpeg slot before seeking or selecting audio.
+		// Release the bridge's single FFmpeg slot before seeking or selecting audio.
 		if (this.info && this.info.method === "MacMini") {
 			this.waitingForRoute = true;
 			this.$.video.setSrc("");
@@ -666,7 +666,7 @@ enyo.kind({
 
 	routeCaption: function() {
 		if (!this.info) return "Route: preparing";
-		if (this.info.method === "MacMini") return "Route: Mac mini conversion";
+		if (this.info.method === "MacMini") return "Route: LAN bridge conversion";
 		if (this.info.method === "DirectPlay") return "Route: direct";
 		return "Route: " + this.info.method;
 	},
@@ -848,7 +848,7 @@ enyo.kind({
 
 	updateRouteStatus: function() {
 		var method = this.info && this.info.method;
-		var caption = method === "MacMini" ? "Mac mini" : method === "DirectPlay" ? "Direct" : "";
+		var caption = method === "MacMini" ? "LAN bridge" : method === "DirectPlay" ? "Direct" : "";
 		this.$.routeStatus.setContent(caption);
 		this.$.routeStatus.setShowing(!!caption);
 	},
@@ -1348,7 +1348,7 @@ enyo.kind({
 		if (source) {
 			var decision = JF.choosePlayback(this.item, source, index, this.playbackMode === "mini");
 			if (decision.audioIndex !== index || ((!decision.direct || JF.audioNeedsRemux(source, index)) && !this.canChooseMacMini())) {
-				this.audioNotice = decision.audioIndex !== index ? "This audio format is unavailable." : "This track needs the configured Mac mini.";
+				this.audioNotice = decision.audioIndex !== index ? "This audio format is unavailable." : "This track needs the LAN media bridge.";
 				this.updateTrackStatus();
 				return;
 			}

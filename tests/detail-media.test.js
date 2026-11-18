@@ -87,9 +87,9 @@ Detail.playClick.call(actions);
 Detail.resumeClick.call(actions);
 Detail.forceMacClick.call(actions);
 assert.deepStrictEqual(playRequests.map(request=>request[3]), ['full-hd', 'full-hd', 'full-hd'],
-  'Play, Resume and Mac mini requests all carry the selected source id');
+  'Play, Resume and LAN bridge requests all carry the selected source id');
 assert.strictEqual(playRequests[1][1], 300000000, 'Resume retains the stored position');
-assert.strictEqual(playRequests[2][2].mode, 'mini', 'Mac mini button still forces Mini mode');
+assert.strictEqual(playRequests[2][2].mode, 'mini', 'LAN bridge button still forces Mini mode');
 
 const moreRequests = [];
 const moreActions = {
