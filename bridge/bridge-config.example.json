@@ -1,0 +1,11 @@
+{
+  "emby_base": "https://emby.example.invalid",
+  "emby_user_id": "REPLACE_WITH_USER_ID",
+  "emby_token": "REPLACE_WITH_EMBY_TOKEN",
+  "listen_host": "192.168.50.20",
+  "listen_port": 18099,
+  "capability": "REPLACE_WITH_32_OR_MORE_RANDOM_CHARACTERS",
+  "ffmpeg": "/usr/local/bin/ffmpeg",
+  "ffprobe": "/usr/local/bin/ffprobe",
+  "nas_root": "/Volumes/Media"
+}

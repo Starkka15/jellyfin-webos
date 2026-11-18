@@ -68,12 +68,19 @@ A few things the TouchPad needs, found the hard way:
   that starts at the new time.
 - **The video fills the screen and is never resized**, with the controls floating over it. This
   follows HP's own video players; a video in a resizable box stops updating its picture.
-- **Subtitles are drawn into the picture by the server.** Text laid over the video makes it stutter.
+- Text subtitles on in-app direct and LAN bridge routes are displayed locally. Options include size, background opacity and timing. The server-managed route retains burned-in subtitles.
 - **A small relay service for `https` servers.** The media player's network code (libsoup on
   GnuTLS 2) cannot connect to a modern HTTPS server, even on webOS CE. For an `https` address the
   app hands the stream to its bundled service (`service/relay.js`), which fetches it with CE's
   modern `curl` and passes it to the player at a local `http://127.0.0.1` address. Only addresses
   the app registers are relayed. Plain `http` addresses go straight to the player.
+
+## Player updates
+
+- The full-screen player has touch lock, seek preview and drag-to-seek. A–B repeat is available for seekable direct playback.
+- The details page can select a media source and display its video and audio properties. **Playback settings** can also select the system video player.
+- For Emby, choose **Server type: Emby** before signing in. The Jellyfin profile remains the default.
+- The optional [LAN Media Bridge](bridge/README.md) renders incompatible media as H.264/AAC and adds NAS and AList network sources to Home. It also selects alternate audio for MP4 sources where native playback would use the original track.
 
 ## Finding the server at home
 

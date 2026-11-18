@@ -62,8 +62,12 @@ function relay(req, res) {
 	if (req.headers.range) {
 		args.push("-H", "Range: " + req.headers.range);
 	}
-	args.push(route.url);
+	// The upstream URL can contain an account token. Feed it over stdin so it
+	// is absent from process arguments and from the local player URL.
+	args.push("--config", "-");
 	var child = child_process.spawn(CURL, args);
+	child.stdin.on("error", function() {});
+	child.stdin.end('url = "' + route.url.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"\n');
 	var head = "";
 	var started = false;
 	var finished = false;
@@ -123,7 +127,7 @@ function relay(req, res) {
 		}
 	});
 	child.stderr.on("data", function(d) {
-		log("curl: " + d.toString().replace(/\s+$/, ""));
+		log("curl transport error");
 	});
 	child.on("exit", function(code) {
 		if (!started) {
@@ -174,7 +178,7 @@ function withServer(cb) {
 var relayAssistant = function() {};
 relayAssistant.prototype.run = function(future) {
 	var a = this.controller.args || {};
-	if (!a.url || !/^https?:\/\//.test(a.url)) {
+	if (!a.url || !/^https?:\/\/[^\s\"']+$/i.test(a.url)) {
 		future.result = {returnValue: false, errorText: "missing or bad url"};
 		return future;
 	}

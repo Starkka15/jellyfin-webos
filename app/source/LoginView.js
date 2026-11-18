@@ -12,7 +12,8 @@ enyo.kind({
 				{content: "Jellyfin", className: "jf-brand"},
 				{kind: "RowGroup", caption: "Server", components: [
 					{name: "url", kind: "Input", hint: "Server address, e.g. https://jellyfin.example.com", inputType: "url",
-						autoCapitalize: "lowercase", autocorrect: false, spellcheck: false}
+						autoCapitalize: "lowercase", autocorrect: false, spellcheck: false},
+					{name: "embyServer", kind: "Button", caption: "Server type: Jellyfin", onclick: "serverTypeClick"}
 				]},
 				// Servers that answered the local network search (see searchServers).
 				{name: "searching", className: "jf-login-note", showing: false},
@@ -38,6 +39,8 @@ enyo.kind({
 			this.$.url.setHint("Server address");
 		}
 		this.$.url.setValue(JF.api.baseUrl || "");
+		this.useEmby = !!JF.api.baseUrl && localStorage.getItem("jf.embyUrl") === JF.api.signedInUrl;
+		this.updateServerType();
 		this.$.user.setValue(JF.api.userName || "");
 	},
 
@@ -75,6 +78,15 @@ enyo.kind({
 		this.$.url.setValue(inSender.server.address);
 	},
 
+	serverTypeClick: function() {
+		this.useEmby = !this.useEmby;
+		this.updateServerType();
+	},
+
+	updateServerType: function() {
+		this.$.embyServer.setCaption(this.useEmby ? "Server type: Emby" : "Server type: Jellyfin");
+	},
+
 	signIn: function() {
 		var url = this.$.url.getValue();
 		var user = this.$.user.getValue();
@@ -87,6 +99,8 @@ enyo.kind({
 		JF.api.signIn(url, user, this.$.password.getValue() || "", enyo.bind(this, function(ok, message) {
 			this.$.button.setDisabled(false);
 			if (ok) {
+				if (this.useEmby) localStorage.setItem("jf.embyUrl", JF.api.signedInUrl);
+				else localStorage.removeItem("jf.embyUrl");
 				this.$.password.setValue("");
 				this.$.message.setContent("");
 				this.doSignedIn();

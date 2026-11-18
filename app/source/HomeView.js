@@ -6,12 +6,13 @@ enyo.kind({
 	events: {
 		onOpen: "",
 		onSearch: "",
-		onSignOut: ""
+		onSignOut: "",
+		onOpenNetworkSource: ""
 	},
 	components: [
 		{kind: "PageHeader", className: "jf-header", components: [
 			// On a phone only the search fits; Refresh and Sign Out are in the app menu.
-			{name: "title", content: "Jellyfin", flex: 1, className: "jf-header-title jf-wide-only"},
+			{name: "title", content: "Emby", flex: 1, className: "jf-header-title jf-wide-only"},
 			{name: "search", kind: "Input", hint: "Search", className: "jf-search",
 				autoCapitalize: "lowercase", autocorrect: false, spellcheck: false, onkeypress: "searchKey"},
 			{kind: "Button", caption: "Search", onclick: "searchClick"},
@@ -20,6 +21,11 @@ enyo.kind({
 		]},
 		{kind: "Scroller", flex: 1, components: [
 			{name: "message", className: "jf-message"},
+			{name: "networkLabel", content: "Network Sources", className: "jf-section", showing: false},
+			{name: "networkButtons", kind: "HFlexBox", className: "jf-detail-buttons", showing: false, components: [
+				{name: "nas", kind: "Button", caption: "NAS", onclick: "nasClick"},
+				{name: "alist", kind: "Button", caption: "AList", onclick: "alistClick"}
+			]},
 			// Local, so it shows even when the server cannot be reached.
 			{name: "downloadsLabel", content: "Downloads", className: "jf-section", showing: false},
 			{name: "downloads", className: "jf-grid"},
@@ -37,7 +43,9 @@ enyo.kind({
 	load: function() {
 		var self = this;
 		this.showDownloads();
-		this.$.title.setContent(JF.api.userName ? "Jellyfin — " + JF.api.userName : "Jellyfin");
+		var brand = localStorage.getItem("jf.embyUrl") === JF.api.signedInUrl ? "Emby" : "Jellyfin";
+		this.$.title.setContent(JF.api.userName ? brand + " — " + JF.api.userName : brand);
+		this.updateNetworkSources();
 		this.$.message.setContent("Loading…");
 		JF.api.views(function(ok, data, status) {
 			if (!ok) {
@@ -57,6 +65,12 @@ enyo.kind({
 		JF.api.latest(function(ok, data) {
 			self.fill("latest", ok && enyo.isArray(data) ? data : []);
 		});
+	},
+
+	updateNetworkSources: function() {
+		var configured = JF.miniProbeConfigured();
+		this.$.networkLabel.setShowing(configured);
+		this.$.networkButtons.setShowing(configured);
 	},
 
 	// Rebuilt only when downloads are added, finish or go away, not on progress.
@@ -95,6 +109,14 @@ enyo.kind({
 			this.$.search.forceBlur && this.$.search.forceBlur();
 			this.doSearch(term);
 		}
+	},
+
+	nasClick: function() {
+		this.doOpenNetworkSource("nas");
+	},
+
+	alistClick: function() {
+		this.doOpenNetworkSource("alist");
 	},
 
 	tileClick: function(inSender, item) {
