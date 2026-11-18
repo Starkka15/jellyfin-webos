@@ -1,0 +1,4 @@
+bridge-config.json
+*.private.json
+__pycache__/
+.venv/

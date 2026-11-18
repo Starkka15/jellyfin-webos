@@ -1,4 +1,82 @@
 /* The app: one Pane holding the five screens, and a stack of where we have been. */
+
+// Video playback stays deliberately separate from audio playback.  The two
+// choices are kept small: which player is used, and whether the Mac mini must
+// transcode.  A boolean is still accepted for older launch scripts that passed
+// forceMac as the fourth argument to playItem().
+JF.playbackSettings = function(value) {
+	var get = function(key) {
+		try { return localStorage.getItem(key); } catch (e) { return ""; }
+	};
+	var player = get("jf.videoPlayer") === "system" ? "system" : "embedded";
+	var mode = get("jf.videoMode") === "mini" ? "mini" : "auto";
+	if (typeof value === "boolean") {
+		mode = value ? "mini" : mode;
+	} else if (value) {
+		if (value.player === "embedded" || value.player === "system") {
+			player = value.player;
+		}
+		if (value.mode === "mini" || value.mode === "auto") {
+			mode = value.mode;
+		}
+		if (value.forceMac) {
+			mode = "mini";
+		}
+	}
+	return {player: player, mode: mode, forceMac: mode === "mini"};
+};
+
+// Make one safe-to-relay route.  The returned URL is private: callers must
+// hand it straight to JF.relay, never to a log or to the system player.
+JF.videoRoute = function(item, source, startTicks, audioIndex, forceMac) {
+	var decision = JF.choosePlayback(item, source, audioIndex, !!forceMac);
+	var seconds = Math.max(0, Math.floor((startTicks || 0) / 10000000));
+	var url;
+	if (decision.direct) {
+		url = JF.api.baseUrl + "/Videos/" + encodeURIComponent(item.Id) + "/stream.mp4" +
+			JF.api.query({static: true, mediaSourceId: source.Id || item.Id,
+				audioStreamIndex: decision.audioIndex, api_key: JF.api.token});
+	} else {
+		url = JF.miniVideoUrl(item, source, decision.audioIndex, startTicks);
+	}
+	if (!url) {
+		return null;
+	}
+	return {url: url, direct: !!decision.direct, warm: !decision.direct && !!JF.miniWarmEnabled, audioIndex: decision.audioIndex,
+		mediaSourceId: source.Id || item.Id, startSeconds: seconds};
+};
+
+// Open the relay only after the Mini has an encoder and startup buffer ready.
+// The player receives an opaque loopback URL after this callback succeeds.
+JF.openVideoRoute = function(route, callback) {
+	if (!route.warm) {
+		JF.relay.open(route.url, callback);
+		return null;
+	}
+	return JF.prepareMiniVideo(route.url, function(readyUrl, error) {
+		if (readyUrl) JF.relay.open(readyUrl, callback);
+		else callback(null, error);
+	});
+};
+
+JF.videoRouteError = function(error) {
+	if (error === "busy") return "The bridge is closing another stream. Please try again.";
+	if (error === "unsupported") return "The bridge cannot convert this source. Choose another version.";
+	return "Could not prepare the stream. Check the LAN media bridge and try again.";
+};
+
+// Topaz may ask this app to play a relay it owns. This deliberately accepts
+// only an opaque loopback relay path, never a server URL or credentials.
+JF.localVideoUrl = function(value) {
+	if (typeof value !== "string" || /[?#]/.test(value)) {
+		return "";
+	}
+	var match = /^http:\/\/127\.0\.0\.1:([1-9][0-9]{0,4})\/s\/([0-9a-f]+)\/video\.(mp4|m4v|mkv|webm|ogv)$/i.exec(value);
+	if (!match || parseInt(match[1], 10) > 65535) {
+		return "";
+	}
+	return value;
+};
 enyo.kind({
 	name: "JF.App",
 	kind: enyo.VFlexBox,
@@ -15,7 +93,10 @@ enyo.kind({
 			subscribe: true, onSuccess: "headsetKey"},
 		{name: "pane", kind: "Pane", flex: 1, transitionKind: "enyo.transitions.Simple", components: [
 			{name: "login", kind: "JF.LoginView", onSignedIn: "signedIn"},
-			{name: "home", kind: "JF.HomeView", onOpen: "openItem", onSearch: "search", onSignOut: "signOut"},
+			{name: "home", kind: "JF.HomeView", onOpen: "openItem", onSearch: "search", onSignOut: "signOut",
+				onOpenNetworkSource: "openNetworkSource"},
+			{name: "network", kind: "JF.NetworkLibraryView", onCloseNetworkSource: "goBack",
+				onPlayNetworkFile: "playNetworkFile"},
 			{name: "browse", kind: "JF.BrowseView", onOpen: "openItem", onBack: "goBack"},
 			{name: "detail", kind: "JF.DetailView", onPlay: "playItem", onBack: "goBack"},
 			{name: "album", kind: "JF.AlbumView", onPlayTracks: "playTracks", onBack: "goBack"},
@@ -38,6 +119,7 @@ enyo.kind({
 		{kind: "AppMenu", components: [
 			{caption: "Refresh", onclick: "refreshClick"},
 			{caption: "Intros and Credits", onclick: "skipMenuClick"},
+			{caption: "LAN Media Bridge", onclick: "bridgeMenuClick"},
 			{caption: "Sign Out", onclick: "signOut"}
 		]},
 		// What the player does at an intro or the credits (JF.api.skipMode).
@@ -49,10 +131,22 @@ enyo.kind({
 			{className: "jf-dialog-note", content: "The server finds them with its Intro Skipper plugin."},
 			{kind: "Button", caption: "Cancel", onclick: "skipDialogClose"}
 		]},
+		{name: "bridgeDialog", kind: "ModalDialog", caption: "LAN Media Bridge", lazy: false, components: [
+			{className: "jf-dialog-note", content: "Optional. Enter the private LAN bridge URL, or leave it empty to disable the bridge."},
+			{name: "bridgeAddress", kind: "PasswordInput", hint: "Bridge URL", autoCapitalize: "lowercase",
+				autocorrect: false, spellcheck: false},
+			{name: "bridgeNote", className: "jf-dialog-note", attributes: {role: "status"}},
+			{kind: "HFlexBox", components: [
+				{kind: "Button", caption: "Cancel", flex: 1, onclick: "closeBridgeDialog"},
+				{kind: "Button", caption: "Save", flex: 1, className: "enyo-button-affirmative", onclick: "saveBridgeAddress"}
+			]}
+		]},
 		{name: "downloads", kind: "JF.Downloads"},
 		// Was the app removed and installed again? (see checkInstall)
 		{name: "installSvc", kind: "PalmService", service: "palm://com.stark.jellyfin.service/",
-			method: "installed", onResponse: "installResponse"}
+			method: "installed", onResponse: "installResponse"},
+		{name: "systemVideoSvc", kind: "PalmService", service: "palm://com.palm.applicationManager/",
+			method: "launch", onResponse: "systemVideoResponse"}
 	],
 
 	create: function() {
@@ -277,6 +371,12 @@ enyo.kind({
 			});
 			return;
 		}
+		// A companion app may pass only its already-local relay address. No Emby
+		// request is made for this form: {playLocalUrl: "http://127.0.0.1:..."}.
+		if (params.playLocalUrl !== undefined) {
+			this.openLocalVideo(params.playLocalUrl);
+			return;
+		}
 		if (!params.play) {
 			return;
 		}
@@ -290,8 +390,12 @@ enyo.kind({
 				return;
 			}
 			self.lastAction = 0;
-			self.playItem(self, item, startTicks);
-			if (params.audio !== undefined || params.subtitles !== undefined) {
+			var settings = JF.playbackSettings({player: params.player,
+				mode: params.forceMac ? "mini" : params.mode});
+			self.playItem(self, item, startTicks, settings);
+			// The system player has no in-app track controls.  Do not start a
+			// second hidden player for a system-player test launch.
+			if (settings.player === "embedded" && (params.audio !== undefined || params.subtitles !== undefined)) {
 				if (params.audio !== undefined) {
 					self.$.player.audioIndex = params.audio;
 				}
@@ -401,13 +505,69 @@ enyo.kind({
 	},
 
 	showView: function(view, item) {
+		this.cancelVideoOpen();
 		this.$.pane.selectViewByName(view);
 		if (view === "nowplayingView") {
 			this.$.nowplayingView.showQueue();
-		} else {
+		} else if (view !== "network") {
 			this.$[view].open(item);
 		}
 		this.showMusicBar(view);
+	},
+
+	bridgeMenuClick: function() {
+		this.$.bridgeAddress.setValue(miniBridgeBase());
+		this.$.bridgeNote.setContent("");
+		this.$.bridgeDialog.openAtCenter();
+	},
+
+	closeBridgeDialog: function() {
+		this.$.bridgeAddress.setValue("");
+		this.$.bridgeDialog.close();
+	},
+
+	saveBridgeAddress: function() {
+		var value = String(this.$.bridgeAddress.getValue() || "").replace(/^\s+|\s+$/g, "");
+		var address = JF.bridgeAddress(value);
+		if (value && !address) {
+			this.$.bridgeNote.setContent("Enter an HTTP private LAN IPv4 address, port, and /v1/ capability.");
+			return;
+		}
+		if (address) localStorage.setItem("jf.miniBridge", address);
+		else {
+			localStorage.removeItem("jf.miniBridge");
+			localStorage.removeItem("jf.videoMode");
+		}
+		this.$.home.updateNetworkSources();
+		this.closeBridgeDialog();
+	},
+
+	openNetworkSource: function(inSender, source) {
+		if (source !== "nas" && source !== "alist") return;
+		this.stack.push({view: "network", item: source});
+		this.showView("network", source);
+		this.$.network.open(source);
+	},
+
+	playNetworkFile: function(inSender, source, path) {
+		var self = this;
+		var url = JF.networkMediaUrl(source, path);
+		if (!url) {
+			this.$.network.setMessage("This file cannot be streamed directly.");
+			return;
+		}
+		this.cancelVideoOpen();
+		var attempt = this.videoOpenAttempt = {};
+		this.$.network.setMessage("Opening stream…");
+		JF.relay.open(url, function(localUrl) {
+			if (attempt !== self.videoOpenAttempt) return;
+			if (!localUrl) {
+				self.$.network.setMessage("Could not open the stream. Please try again.");
+				return;
+			}
+			self.$.network.setMessage("");
+			self.openLocalVideo(localUrl + "/video.mp4", path[path.length - 1]);
+		});
 	},
 
 	// The music bar sits under every screen except the Now Playing screen itself.
@@ -425,19 +585,179 @@ enyo.kind({
 		this.showView("nowplayingView");
 	},
 
-	playItem: function(inSender, item, startTicks) {
-		if (this.tooSoon()) {
-			return;
-		}
+	// sourceId is deliberately a fifth argument: older callers still pass only
+	// the existing playback settings as argument four.
+	playItem: function(inSender, item, startTicks, settings, sourceId) {
+		if (this.tooSoon()) return;
+		this.cancelVideoOpen();
 		if (item.MediaType === "Audio") {
 			this.$.nowPlaying.playTracks([item], 0);
 			return;
 		}
-		// A video takes the whole screen: stop any music first.
+		if (typeof settings === "string" && sourceId === undefined) {
+			sourceId = settings;
+			settings = null;
+		}
+		settings = JF.playbackSettings(settings);
+		var attempt = this.videoOpenAttempt = {};
+		var self = this;
 		this.$.nowPlaying.stopAll();
+		this.$.detail.$.note.setContent("Preparing playback…");
+		JF.api.item(item.Id, function(ok, full) {
+			if (attempt !== self.videoOpenAttempt) return;
+			var sources = ok && full && full.MediaSources;
+			var source = null;
+			var i;
+			if (sources && sourceId !== undefined && sourceId !== null) {
+				for (i = 0; i < sources.length; i++) {
+					if (String(sources[i].Id) === String(sourceId)) {
+						source = sources[i];
+						break;
+					}
+				}
+				if (!source) {
+					self.$.detail.$.note.setContent("The selected source is no longer available. Choose another version.");
+					return;
+				}
+			} else if (sources) {
+				source = sources[0];
+			}
+			if (!source) {
+				if ((sourceId === undefined || sourceId === null) && !settings.forceMac) {
+					self.openEmbeddedVideo(ok && full ? full : item, startTicks, null, settings);
+					return;
+				}
+				self.$.detail.$.note.setContent("Could not load the video source. Please try again.");
+				return;
+			}
+			// Downloads already live on the TouchPad.  Keep their established
+			// in-app path rather than sending them back to a server.
+			if (JF.downloads && JF.downloads.localFile(full.Id)) {
+				self.openEmbeddedVideo(full, startTicks, source, settings);
+				return;
+			}
+			var decision = JF.choosePlayback(full, source, null, !!settings.forceMac);
+			if (decision.direct) {
+				if (settings.player === "embedded") {
+					self.openEmbeddedVideo(full, startTicks, source, settings);
+				} else {
+					self.openSystemVideo(full, startTicks, source, settings);
+				}
+				return;
+			}
+			if (!settings.forceMac && !JF.miniProbeConfigured()) {
+				// Preserve Jellyfin's existing PlaybackInfo transcoding path.
+				// Give it the selected source so preferences and seeks stay on it.
+				var playbackItem = enyo.mixin({}, full);
+				playbackItem.MediaSources = [source];
+				playbackItem.MediaStreams = source.MediaStreams || full.MediaStreams;
+				self.openEmbeddedVideo(playbackItem, startTicks, null, settings);
+				return;
+			}
+			self.probeAndOpenVideo(full, startTicks, source, settings);
+		});
+	},
+
+	// A non-direct or forced route must be checked by the configured Mini before
+	// opening either player. This keeps a known-unsupported source (notably
+	// Dolby Vision Profile 5) out of the transcoding path, while keeping direct
+	// and downloaded playback independent of the Mini.
+	probeAndOpenVideo: function(item, startTicks, source, settings) {
+		var self = this;
+		var attempt = this.videoOpenAttempt;
+		if (!JF.probeVideo || !JF.miniProbeConfigured || !JF.miniProbeConfigured()) {
+			this.$.detail.$.note.setContent("Could not check the LAN media bridge. Check the settings and try again.");
+			return;
+		}
+		JF.probeVideo(item, source, function(ok, info) {
+			if (attempt !== self.videoOpenAttempt) return;
+			if (!ok || !info || String(info.mediaSourceId) !== String(source.Id)) {
+				self.$.detail.$.note.setContent("Could not check the selected source. Please try again.");
+				return;
+			}
+			if (info.miniSupported !== true) {
+				if (info.hdrKind === "dolby-vision" && info.video &&
+					String(info.video.dolbyVisionProfile) === "5") {
+					self.$.detail.$.note.setContent("The bridge cannot convert this Dolby Vision Profile 5 source. Choose another version.");
+				} else {
+					self.$.detail.$.note.setContent("The bridge cannot convert this source. Choose another version or try again.");
+				}
+				return;
+			}
+			if (settings.player === "embedded") {
+				self.openEmbeddedVideo(item, startTicks, source, settings);
+			} else {
+				self.openSystemVideo(item, startTicks, source, settings);
+			}
+		});
+	},
+
+	openEmbeddedVideo: function(item, startTicks, source, settings) {
 		this.stack.push({view: "player", item: item});
 		this.$.pane.selectViewByName("player");
-		this.$.player.playItem(item, startTicks);
+		this.showMusicBar("player");
+		this.$.player.playItem(item, startTicks, source ? {source: source, forceMac: !!settings.forceMac} : null);
+	},
+
+	// This is intentionally narrower than a general URL player. Topaz owns the
+	// loopback relay and can pass its opaque address without leaking any account
+	// token or bridge capability into a window launch.
+	openLocalVideo: function(url, title) {
+		url = JF.localVideoUrl(url);
+		if (!url) {
+			this.$.detail.$.note.setContent("Invalid local video address.");
+			return false;
+		}
+		this.cancelVideoOpen();
+		if (this.$.player.playing) {
+			this.$.player.stopStream();
+		}
+		this.$.nowPlaying.stopAll();
+		this.stack.push({view: "player"});
+		this.$.pane.selectViewByName("player");
+		this.showMusicBar("player");
+		this.$.player.playLocalUrl(url, title);
+		return true;
+	},
+
+	openSystemVideo: function(item, startTicks, source, settings) {
+		var self = this;
+		var attempt = this.videoOpenAttempt;
+		var route = JF.videoRoute(item, source, startTicks, null, !!settings.forceMac);
+		if (!route) {
+			self.$.detail.$.note.setContent("This format needs the LAN media bridge. Configure it or choose another source.");
+			return;
+		}
+		if (route.warm) {
+			self.$.detail.$.note.setContent("Preparing a converted stream…");
+		}
+		this.cancelSystemWarm = JF.openVideoRoute(route, function(localUrl, error) {
+				if (attempt !== self.videoOpenAttempt) return;
+				if (!localUrl) {
+					self.$.detail.$.note.setContent(route.warm ?
+						JF.videoRouteError(error) : "Could not start playback. Please try again.");
+					return;
+				}
+				self.$.detail.$.note.setContent(route.direct ? "System player · direct" : "System player · LAN bridge");
+				JF.log(route.direct ? "system play direct" : "system play via Mac mini");
+				// The installed player forces .mkv URLs through an Ogg workaround.
+				// Keep an opaque .mp4 alias so it detects the actual HTTP media type.
+				self.$.systemVideoSvc.call({id: "com.palm.app.videoplayer", params: {
+					target: localUrl + "/video.mp4", title: "Emby", initialPos: route.direct ? route.startSeconds : 0
+				}});
+			});
+	},
+
+	cancelVideoOpen: function() {
+		this.videoOpenAttempt = null;
+		if (this.cancelSystemWarm) this.cancelSystemWarm();
+		this.cancelSystemWarm = null;
+	},
+
+	systemVideoResponse: function(inSender, response) {
+		if (!response || !response.returnValue) {
+			this.$.detail.$.note.setContent("Could not open the system video player. Try again.");
+		}
 	},
 
 	playTracks: function(inSender, tracks, index) {
@@ -451,6 +771,7 @@ enyo.kind({
 		if (this.tooSoon()) {
 			return;
 		}
+		this.cancelVideoOpen();
 		var leaving = this.stack.pop();
 		if (leaving && leaving.view === "player") {
 			this.$.player.stopStream();
@@ -468,7 +789,8 @@ enyo.kind({
 	// The back gesture (phones) or key. Only swallow it when there is somewhere to go.
 	backGesture: function(inSender, inEvent) {
 		if (this.stack.length) {
-			this.goBack();
+			var top = this.stack[this.stack.length - 1];
+			if (top.view !== "player" || !this.$.player.dismissOverlay()) this.goBack();
 			if (inEvent) {
 				inEvent.preventDefault && inEvent.preventDefault();
 				inEvent.stopPropagation && inEvent.stopPropagation();
@@ -510,6 +832,11 @@ enyo.kind({
 
 	windowParamsChanged: function() {
 		var p = enyo.windowParams || {};
+		if (p.playLocalUrl !== undefined) {
+			this.lastAction = 0;
+			this.openLocalVideo(p.playLocalUrl);
+			return;
+		}
 		if (JF.api.token) {
 			this.justType(p);
 		}
@@ -561,6 +888,7 @@ enyo.kind({
 	},
 
 	unload: function() {
+		this.cancelVideoOpen();
 		this.$.nowPlaying.shutdown();
 		this.$.player.stopStream();
 	}

@@ -186,7 +186,16 @@ JF.api = {
 	},
 
 	// callback(ok, data, status)
-	request: function(method, path, params, body, callback) {
+	request: function(method, path, params, body, callback, asText) {
+		// Emby 4 keeps these per-user endpoints, while Jellyfin 12 renamed them.
+		// Only apply this compatibility mapping to the configured Emby server.
+		if (this.userId && this.signedInUrl === localStorage.getItem("jf.embyUrl") && method === "GET") {
+			var userRoot = "/Users/" + encodeURIComponent(this.userId);
+			if (path === "/UserViews") path = userRoot + "/Views";
+			else if (path === "/UserItems/Resume") path = userRoot + "/Items/Resume";
+			else if (path === "/Items/Latest") path = userRoot + "/Items/Latest";
+			else if (/^\/Items\/[^\/?]+$/.test(path)) path = userRoot + path;
+		}
 		var url = (path.indexOf("http") === 0 ? path : this.baseUrl + path) + this.query(params || {});
 		var req = new XMLHttpRequest();
 		var done = false;
@@ -206,7 +215,7 @@ JF.api = {
 
 		req.open(method, url, true);
 		req.setRequestHeader("Authorization", this.authHeader());
-		req.setRequestHeader("Accept", "application/json");
+		req.setRequestHeader("Accept", asText ? "text/plain, */*;q=0.1" : "application/json");
 		if (body) {
 			req.setRequestHeader("Content-Type", "application/json");
 		}
@@ -216,7 +225,9 @@ JF.api = {
 			}
 			var ok = req.status >= 200 && req.status < 300;
 			var data = null;
-			if (req.responseText) {
+			if (asText) {
+				data = ok ? req.responseText : null;
+			} else if (req.responseText) {
 				try { data = JSON.parse(req.responseText); } catch (e) { data = null; }
 			}
 			if (!ok) {
@@ -225,10 +236,22 @@ JF.api = {
 			finish(ok, data, req.status);
 		};
 		req.send(body ? JSON.stringify(body) : null);
+		return function() {
+			if (done) return;
+			done = true;
+			clearTimeout(timer);
+			try { req.abort(); } catch (e) {}
+		};
 	},
 
 	get: function(path, params, callback) {
 		this.request("GET", path, params, null, callback);
+	},
+
+	textSubtitle: function(itemId, sourceId, index, callback) {
+		var path = "/Videos/" + encodeURIComponent(itemId) + "/" + encodeURIComponent(sourceId) +
+			"/Subtitles/" + encodeURIComponent(index) + "/Stream.srt";
+		return this.request("GET", path, null, null, callback, true);
 	},
 
 	post: function(path, body, callback) {
@@ -293,7 +316,7 @@ JF.api = {
 	},
 
 	item: function(id, callback) {
-		this.get("/Items/" + id, {userId: this.userId}, callback);
+		this.get("/Items/" + encodeURIComponent(id), {userId: this.userId}, callback);
 	},
 
 	// A video's intro and credits, where the server knows them (its media
@@ -892,7 +915,8 @@ JF.api = {
 			if (all[i].Type === type) {
 				out.push({index: all[i].Index, title: all[i].DisplayTitle || (type + " " + all[i].Index),
 					language: all[i].Language || "", isDefault: !!all[i].IsDefault,
-					isText: !!all[i].IsTextSubtitleStream});
+					isText: !!all[i].IsTextSubtitleStream || /^(srt|subrip|ass|ssa|vtt|webvtt|mov_text)$/i.test(all[i].Codec || ""),
+					isExternal: !!all[i].IsExternal});
 			}
 		}
 		return out;

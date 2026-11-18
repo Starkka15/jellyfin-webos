@@ -21,31 +21,29 @@ enyo.kind({
 	],
 
 	needed: function(url) {
-		return /^https:/i.test(url || "");
+		// Keep account credentials and LAN bridge capabilities out of media logs.
+		return /^https?:/i.test(url || "") && !/^http:\/\/127\.0\.0\.1(?::|\/)/i.test(url || "");
 	},
 
 	// callback(playableUrl) or callback(null) if the relay could not be started.
-	// Only the latest request is answered.
 	open: function(url, callback) {
 		if (!this.needed(url)) {
 			callback(url);
 			return;
 		}
-		this.pending = callback;
-		this.$.relaySvc.call({url: url});
+		this.$.relaySvc.call({url: url}, {jfCallback: callback});
 	},
 
-	relayResponse: function(inSender, inResponse) {
-		var callback = this.pending;
-		this.pending = null;
+	relayResponse: function(inSender, inResponse, inRequest) {
+		var callback = inRequest && inRequest.jfCallback;
 		if (!callback) {
 			return;
 		}
 		if (inResponse && inResponse.returnValue && inResponse.url) {
-			JF.log("relaying the stream through " + inResponse.url);
+			JF.log("relay ready");
 			callback(inResponse.url);
 		} else {
-			JF.log("relay failed: " + enyo.json.stringify(inResponse));
+			JF.log("relay failed");
 			callback(null);
 		}
 	},

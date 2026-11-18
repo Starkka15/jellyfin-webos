@@ -2,7 +2,7 @@
 enyo.kind({
 	name: "JF.DetailView",
 	kind: enyo.VFlexBox,
-	className: "jf-view",
+	className: "jf-view jf-detail-view",
 	events: {
 		onPlay: "",
 		onBack: ""
@@ -18,17 +18,25 @@ enyo.kind({
 				{flex: 1, className: "jf-detail-info", components: [
 					{name: "name", className: "jf-detail-name"},
 					{name: "meta", className: "jf-detail-meta"},
-					{kind: "HFlexBox", className: "jf-detail-buttons", components: [
+					{name: "mediaGroup", className: "jf-detail-media", showing: false, components: [
+						{name: "mediaInfo", className: "jf-detail-meta", showing: false, components: [
+							{name: "videoInfo"},
+							{name: "audioInfo"}
+						]},
+						{name: "sourceRow", kind: "VFlexBox", className: "jf-detail-source", showing: false, components: [
+							{content: "Source", className: "jf-detail-source-label"},
+							{name: "sourceSelector", kind: "ListSelector", className: "jf-detail-source-selector",
+								onChange: "sourceChanged"}
+						]},
+						{name: "probeNote", className: "jf-detail-probe", showing: false}
+					]},
+					{kind: "HFlexBox", className: "jf-detail-actions", components: [
 						{name: "resume", kind: "Button", caption: "Resume", className: "enyo-button-affirmative",
 							onclick: "resumeClick", showing: false},
 						{name: "play", kind: "Button", caption: "Play", className: "enyo-button-affirmative",
 							onclick: "playClick"},
-						{name: "watched", kind: "Button", caption: "Mark Watched", onclick: "watchedClick"}
-					]},
-					// A row of its own: a movie's Resume, Play and Watched already fill the first.
-					{kind: "HFlexBox", className: "jf-detail-buttons", components: [
-						{name: "download", kind: "Button", caption: "Download", onclick: "downloadClick", showing: false},
-						{name: "favorite", kind: "Button", caption: "Add to Favorites", onclick: "favoriteClick"}
+						{name: "playSettings", kind: "Button", caption: "Playback settings", onclick: "playSettingsClick", showing: false},
+						{name: "more", kind: "Button", caption: "More", onclick: "moreClick"}
 					]},
 					{name: "downloadStatus", className: "jf-download-status", showing: false},
 					{name: "note", className: "jf-message"},
@@ -36,6 +44,7 @@ enyo.kind({
 				]}
 			]}
 		]},
+		{name: "menu", kind: "PopupSelect", className: "jf-detail-menu", onSelect: "menuSelect"},
 		// Options for a download: which audio and subtitles go into the file, and how big it gets.
 		{name: "dlDialog", kind: "ModalDialog", caption: "Download", lazy: false, components: [
 			{kind: "RowGroup", components: [
@@ -62,8 +71,43 @@ enyo.kind({
 				{kind: "Button", caption: "Download", flex: 1, className: "enyo-button-affirmative",
 					onclick: "confirmDownload"}
 			]}
+		]},
+		// These are deliberately independent: the chosen player and whether the
+		// Mac mini is required answer two different questions.
+		{name: "playDialog", kind: "ModalDialog", className: "jf-detail-settings", caption: "Playback settings", lazy: false, components: [
+			{kind: "RowGroup", components: [
+				{kind: "Item", layoutKind: "HFlexLayout", align: "center", components: [
+					{content: "Player", flex: 1},
+					{name: "playPlayer", kind: "ListSelector", items: [
+						{caption: "System video player", value: "system"},
+						{caption: "In-app player", value: "embedded"}
+					]}
+				]},
+				{kind: "Item", layoutKind: "HFlexLayout", align: "center", components: [
+					{content: "Playback route", flex: 1},
+					{name: "playMode", kind: "ListSelector", items: [
+						{caption: "Auto", value: "auto"},
+						{caption: "LAN bridge (experimental)", value: "mini"}
+					]}
+				]}
+			]},
+			{className: "jf-dialog-note", content: "Auto plays compatible sources directly. Other sources use the configured bridge or the Jellyfin server."},
+			{kind: "HFlexBox", components: [
+				{kind: "Button", caption: "Cancel", flex: 1, onclick: "closePlaySettings"},
+				{kind: "Button", caption: "Save", flex: 1, className: "enyo-button-affirmative", onclick: "savePlaySettings"}
+			]}
 		]}
 	],
+
+	create: function() {
+		this.inherited(arguments);
+		var selectors = [this.$.sourceSelector, this.$.playPlayer, this.$.playMode];
+		for (var i = 0; i < selectors.length; i++) {
+			if (selectors[i] && selectors[i].popup) {
+				selectors[i].popup.addClass("jf-detail-menu");
+			}
+		}
+	},
 
 	// Show what we already know, then ask the server for the full record.
 	open: function(item) {
@@ -78,22 +122,34 @@ enyo.kind({
 
 	showItem: function(item) {
 		this.item = item;
+		this.probeSerial = (this.probeSerial || 0) + 1;
+		this.probeInfo = null;
+		this.setPlaybackDisabled(false);
 		var video = item.MediaType === "Video";
 		var playable = video || item.MediaType === "Audio";
 		var position = (item.UserData && item.UserData.PlaybackPositionTicks) || 0;
 		this.$.title.setContent(item.SeriesName || item.Name || "");
 		this.$.name.setContent(this.nameFor(item));
 		this.$.meta.setContent(this.metaFor(item));
+		var source = this.setSourceOptions(item);
+		var mediaInfo = this.mediaInfoFor(item, source);
+		this.$.mediaGroup.setShowing(!!mediaInfo || (item.MediaSources || []).length > 1);
+		this.$.mediaInfo.setShowing(!!mediaInfo);
+		if (mediaInfo) {
+			this.$.videoInfo.setContent(mediaInfo.video);
+			this.$.audioInfo.setContent(mediaInfo.audio);
+		}
+		this.probeSelectedSource(item, source, this.probeSerial);
 		this.$.overview.setContent(item.Overview || "");
 		var url = JF.api.imageUrl(item, 480);
 		this.$.art.applyStyle("background-image", url ? "url('" + url + "')" : "none");
-		this.$.play.setShowing(playable);
-		this.$.play.setCaption(position ? "Play from Start" : "Play");
+		this.$.play.setShowing(playable && !(video && position > 0));
+		this.$.play.setCaption("Play");
 		this.$.resume.setShowing(video && position > 0);
 		this.$.resume.setCaption("Resume at " + JF.api.ticksToText(position));
-		this.$.watched.setShowing(video);
-		this.$.watched.setCaption(item.UserData && item.UserData.Played ? "Mark Unwatched" : "Mark Watched");
-		this.$.favorite.setCaption(JF.api.favoriteCaption(item));
+		this.$.playSettings.setShowing(video);
+		this.watchedCaption = item.UserData && item.UserData.Played ? "Mark Unwatched" : "Mark Watched";
+		this.favoriteCaption = JF.api.favoriteCaption(item);
 		this.$.note.setContent(playable ? "" : "This app cannot play this kind of item yet.");
 		this.showDownload();
 	},
@@ -120,8 +176,7 @@ enyo.kind({
 				(e && e.description ? " " + e.description + "." : ""),
 			failed: e && e.error ? e.error : ""
 		};
-		this.$.download.setShowing(video);
-		this.$.download.setCaption(captions[state]);
+		this.downloadCaption = captions[state];
 		this.$.downloadStatus.setContent(notes[state]);
 		this.$.downloadStatus.setShowing(video && !!notes[state]);
 	},
@@ -132,6 +187,43 @@ enyo.kind({
 			this.openOptions();
 		} else {
 			JF.downloads.remove(this.item.Id);
+		}
+	},
+
+	// Keep secondary video actions available without making the detail header wider
+	// than the TouchPad's portrait viewport.
+	moreClick: function() {
+		var item = this.item;
+		var video = item && item.MediaType === "Video";
+		var position = (item && item.UserData && item.UserData.PlaybackPositionTicks) || 0;
+		var items = [];
+		if (video && position > 0) {
+			items.push({caption: "Play from Start", value: "start"});
+		}
+		if (video) {
+			items.push({caption: this.watchedCaption || "Mark Watched", value: "watched"});
+			items.push({caption: this.downloadCaption || "Download", value: "download"});
+			items.push({caption: "Play via LAN bridge (experimental)", value: "mini"});
+		}
+		if (item) {
+			items.push({caption: this.favoriteCaption || "Add to Favorites", value: "favorite"});
+		}
+		this.$.menu.setItems(items);
+		this.$.menu.openAroundControl(this.$.more);
+	},
+
+	menuSelect: function(inSender, inItem) {
+		var action = inItem.getValue();
+		if (action === "start") {
+			this.playClick();
+		} else if (action === "watched") {
+			this.watchedClick();
+		} else if (action === "download") {
+			this.downloadClick();
+		} else if (action === "mini") {
+			this.forceMacClick();
+		} else if (action === "favorite") {
+			this.favoriteClick();
 		}
 	},
 
@@ -234,13 +326,264 @@ enyo.kind({
 		return parts.join("  ·  ");
 	},
 
+	// A chosen source must stand on its own: source-level streams from another
+	// file can describe a different audio track or codec. Brief library records
+	// can lack sources; the full item in open() redraws this later.
+	streamFor: function(item, source, type) {
+		var list = source ? (source.MediaStreams || []) : (item.MediaStreams || []);
+		var fallback = null, preferred = null;
+		for (var i = 0; i < list.length; i++) {
+			var stream = list[i];
+			if (stream.Type !== type) {
+				continue;
+			}
+			if (type === "Audio" && source && source.DefaultAudioStreamIndex !== undefined &&
+				source.DefaultAudioStreamIndex !== null && stream.Index === source.DefaultAudioStreamIndex) {
+				return stream;
+			}
+			if (!fallback) {
+				fallback = stream;
+			}
+			if (type === "Audio" && stream.IsDefault) {
+				preferred = stream;
+			}
+		}
+		return preferred || fallback;
+	},
+
+	sourceById: function(item, sourceId) {
+		var sources = item && item.MediaSources || [];
+		if (sourceId === undefined || sourceId === null) {
+			return null;
+		}
+		for (var i = 0; i < sources.length; i++) {
+			if (String(sources[i].Id) === String(sourceId)) {
+				return sources[i];
+			}
+		}
+		return null;
+	},
+
+	sourceFor: function(item) {
+		var sources = item && item.MediaSources || [];
+		return this.sourceById(item, this.selectedSourceId) || sources[0] || null;
+	},
+
+	sourceLabel: function(item, source) {
+		var video = this.streamFor(item, source, "Video");
+		var codec = (video && video.Codec) || source.VideoCodec;
+		var width = (video && video.Width) || source.Width;
+		var height = (video && video.Height) || source.Height;
+		var container = source.Container;
+		return (codec ? String(codec).toUpperCase() : "Unknown codec") + " · " +
+			(width && height ? width + "×" + height : "Unknown resolution") + " · " +
+			(container ? String(container).toUpperCase() : "Unknown container");
+	},
+
+	setSourceOptions: function(item) {
+		var sources = item && item.MediaSources || [];
+		var source;
+		if (this.sourceItemId !== (item && item.Id)) {
+			this.sourceItemId = item && item.Id;
+			this.selectedSourceId = null;
+		}
+		source = this.sourceById(item, this.selectedSourceId);
+		if (!source && sources.length) {
+			source = sources[0];
+			this.selectedSourceId = source.Id;
+		}
+		if (!sources.length) {
+			this.selectedSourceId = null;
+		}
+		this.$.sourceRow.setShowing(sources.length > 1);
+		this.$.sourceSelector.setItems(this.sourceItems(item, sources));
+		this.$.sourceSelector.setValue(this.selectedSourceId);
+		return source || null;
+	},
+
+	sourceItems: function(item, sources) {
+		var items = [];
+		for (var i = 0; i < sources.length; i++) {
+			items.push({caption: this.sourceLabel(item, sources[i]), value: sources[i].Id});
+		}
+		return items;
+	},
+
+	sourceChanged: function(inSender) {
+		var sourceId = inSender.getValue();
+		var source = this.sourceById(this.item, sourceId);
+		if (!source) {
+			return;
+		}
+		this.selectedSourceId = source.Id;
+		var mediaInfo = this.mediaInfoFor(this.item, source);
+		this.$.mediaInfo.setShowing(!!mediaInfo);
+		if (mediaInfo) {
+			this.$.videoInfo.setContent(mediaInfo.video);
+			this.$.audioInfo.setContent(mediaInfo.audio);
+		}
+		this.probeSerial = (this.probeSerial || 0) + 1;
+		this.probeInfo = null;
+		this.setPlaybackDisabled(false);
+		this.probeSelectedSource(this.item, source, this.probeSerial);
+	},
+
+	bitrateText: function(value) {
+		if (typeof value === "string") {
+			value = parseInt(value, 10);
+		}
+		if (typeof value !== "number" || !isFinite(value) || value <= 0) {
+			return "";
+		}
+		var kbps = Math.round(value / 1000);
+		return kbps >= 1000 ? Math.round(kbps / 100) / 10 + " Mb/s" : kbps + " kb/s";
+	},
+
+	mediaInfoFor: function(item, source, actual) {
+		if (!item || item.MediaType !== "Video") {
+			return null;
+		}
+		if (source === undefined) {
+			source = this.sourceFor ? this.sourceFor(item) :
+				(item.MediaSources && item.MediaSources[0]) || null;
+		}
+		var video = this.streamFor(item, source, "Video");
+		var audio = this.streamFor(item, source, "Audio");
+		var actualVideo = actual && actual.video;
+		var actualAudio = actual && actual.audio;
+		var videoCodec = (actualVideo && actualVideo.codec) || (video && video.Codec) ||
+			(source && source.VideoCodec) || (!source && item.VideoCodec);
+		var audioCodec = (actualAudio && actualAudio.codec) || (audio && audio.Codec) ||
+			(source && source.AudioCodec) || (!source && item.AudioCodec);
+		var width = (actualVideo && actualVideo.width) || (video && video.Width) ||
+			(source && source.Width) || (!source && item.Width);
+		var height = (actualVideo && actualVideo.height) || (video && video.Height) ||
+			(source && source.Height) || (!source && item.Height);
+		var container = (source && source.Container) || (!source && item.Container);
+		var range = actual ? this.probeHdrText(actual) :
+			(video && (video.VideoRangeType || video.VideoRange)) ||
+			(source && (source.VideoRangeType || source.VideoRange)) ||
+			(!source && (item.VideoRangeType || item.VideoRange));
+		var bitrate = (source && source.Bitrate) || (video && video.Bitrate) || (!source && item.Bitrate);
+		var videoParts = ["Video: " + (videoCodec ? String(videoCodec).toUpperCase() : "Unknown codec"),
+			width && height ? width + "×" + height : "Unknown resolution",
+			container ? String(container).toUpperCase() : "Unknown container"];
+		if (actualVideo && actualVideo.bitDepth) {
+			videoParts.push(actualVideo.bitDepth + "-bit");
+		}
+		if (range) {
+			videoParts.push("Range: " + range);
+		}
+		var bitrateText = this.bitrateText(bitrate);
+		if (bitrateText) {
+			videoParts.push(bitrateText);
+		}
+		var channelCount = (actualAudio && actualAudio.channels) || (audio && audio.Channels);
+		return {video: videoParts.join(" · "), audio: "Audio: " +
+			(audioCodec ? String(audioCodec).toUpperCase() : "Unknown codec") + " · " +
+			(channelCount ? channelCount + " ch" : "Unknown channels")};
+	},
+
+	probeHdrText: function(actual) {
+		var kind = actual && String(actual.hdrKind || "").toLowerCase();
+		var video = actual && actual.video || {};
+		if (kind === "dolby-vision") {
+			return "Dolby Vision" + (video.dolbyVisionProfile !== undefined ?
+				" Profile " + video.dolbyVisionProfile : "");
+		}
+		if (kind === "hdr10") return "HDR10";
+		if (kind === "hlg") return "HLG";
+		if (kind === "sdr") return "SDR";
+		return "Unknown";
+	},
+
+	setProbeNote: function(text) {
+		if (!this.$.probeNote) return;
+		this.$.probeNote.setContent(text || "");
+		this.$.probeNote.setShowing(!!text);
+	},
+
+	setPlaybackDisabled: function(disabled) {
+		if (this.$.play && this.$.play.setDisabled) {
+			this.$.play.setDisabled(!!disabled);
+		}
+		if (this.$.resume && this.$.resume.setDisabled) {
+			this.$.resume.setDisabled(!!disabled);
+		}
+	},
+
+	shouldDisableForProbe: function(item, source, info) {
+		var kind, video, transfer, decision;
+		if (!info || info.miniSupported !== false) return false;
+		kind = String(info.hdrKind || "").toLowerCase();
+		video = info.video || {};
+		transfer = String(video.colorTransfer || "").toLowerCase();
+		// Actual HDR/Dolby facts override a stale server SDR label: these routes
+		// cannot safely fall back to the TouchPad's direct player.
+		if (kind === "hdr10" || kind === "hlg" || kind === "dolby-vision" ||
+			video.dolbyVisionProfile !== undefined || /smpte2084|arib-std-b67/.test(transfer)) {
+			return true;
+		}
+		// For non-HDR sources, only a route that was already non-direct needs Mini.
+		decision = JF.choosePlayback ? JF.choosePlayback(item, source, null, false) : null;
+		return !!decision && !decision.direct;
+	},
+
+	probeSelectedSource: function(item, source, token) {
+		var self = this;
+		this.setPlaybackDisabled(false);
+		if (!item || item.MediaType !== "Video" || !source || !this.streamFor(item, source, "Video")) {
+			this.setProbeNote("");
+			return;
+		}
+		if (!JF.miniProbeConfigured || !JF.miniProbeConfigured()) {
+			this.setProbeNote("Source metadata from the server.");
+			return;
+		}
+		var apply = function(ok, info) {
+			if (token !== self.probeSerial || self.item !== item ||
+				String(self.selectedSourceId) !== String(source.Id)) return;
+			if (!ok || !info || String(info.mediaSourceId) !== String(source.Id)) {
+				self.probeInfo = null;
+				self.setPlaybackDisabled(false);
+				self.setProbeNote("Source probe failed. Showing server metadata.");
+				return;
+			}
+			self.probeInfo = info;
+			self.setPlaybackDisabled(self.shouldDisableForProbe(item, source, info));
+			var mediaInfo = self.mediaInfoFor(item, source, info);
+			self.$.mediaInfo.setShowing(!!mediaInfo);
+			if (mediaInfo) {
+				self.$.videoInfo.setContent(mediaInfo.video);
+				self.$.audioInfo.setContent(mediaInfo.audio);
+			}
+			if (info.hdrKind === "dolby-vision" && info.video &&
+				String(info.video.dolbyVisionProfile) === "5" && info.miniSupported === false) {
+				self.setProbeNote("The bridge cannot convert this Dolby Vision Profile 5 source. Choose another version.");
+			} else {
+				self.setProbeNote("");
+			}
+		};
+		var cached = JF.cachedVideoProbe ? JF.cachedVideoProbe(item, source) : null;
+		if (cached) {
+			apply(true, cached);
+			return;
+		}
+		this.setProbeNote("Checking the selected source…");
+		if (JF.probeVideo) {
+			JF.probeVideo(item, source, apply);
+		} else {
+			apply(false, null);
+		}
+	},
+
 	watchedClick: function() {
 		var self = this;
 		var item = this.item;
 		var played = !(item.UserData && item.UserData.Played);
-		this.$.watched.setDisabled(true);
+		this.$.more.setDisabled(true);
 		JF.api.setPlayed(item.Id, played, function(ok) {
-			self.$.watched.setDisabled(false);
+			self.$.more.setDisabled(false);
 			if (ok && self.item === item) {
 				self.open(item);  // fetch the record again and redraw
 			}
@@ -249,20 +592,42 @@ enyo.kind({
 
 	favoriteClick: function() {
 		var self = this;
-		this.$.favorite.setDisabled(true);
+		this.$.more.setDisabled(true);
 		JF.api.toggleFavorite(this.item, function() {
-			self.$.favorite.setDisabled(false);
-			self.$.favorite.setCaption(JF.api.favoriteCaption(self.item));
+			self.$.more.setDisabled(false);
+			self.favoriteCaption = JF.api.favoriteCaption(self.item);
 		});
+	},
+
+	playSettingsClick: function() {
+		var settings = JF.playbackSettings();
+		this.$.playPlayer.setValue(settings.player);
+		this.$.playMode.setValue(settings.mode);
+		this.$.playDialog.openAtCenter();
+	},
+
+	closePlaySettings: function() {
+		this.$.playDialog.close();
+	},
+
+	savePlaySettings: function() {
+		localStorage.setItem("jf.videoPlayer", this.$.playPlayer.getValue() === "embedded" ? "embedded" : "system");
+		localStorage.setItem("jf.videoMode", this.$.playMode.getValue() === "mini" ? "mini" : "auto");
+		this.$.playDialog.close();
+	},
+
+	forceMacClick: function() {
+		this.doPlay(this.item, 0, JF.playbackSettings({mode: "mini"}), this.selectedSourceId);
 	},
 
 	playClick: function() {
 		JF.log("tap: play from start");
-		this.doPlay(this.item, 0);
+		this.doPlay(this.item, 0, JF.playbackSettings(), this.selectedSourceId);
 	},
 
 	resumeClick: function() {
 		JF.log("tap: resume");
-		this.doPlay(this.item, (this.item.UserData && this.item.UserData.PlaybackPositionTicks) || 0);
+		this.doPlay(this.item, (this.item.UserData && this.item.UserData.PlaybackPositionTicks) || 0,
+			JF.playbackSettings(), this.selectedSourceId);
 	}
 });

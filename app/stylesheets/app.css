@@ -176,11 +176,11 @@ body {
 /* ---- one item ---------------------------------------------------------- */
 
 .jf-detail {
-	padding: 24px;
+	padding: 20px;
 }
 .jf-detail-art {
-	width: 300px;
-	height: 440px;
+	width: 260px;
+	height: 382px;
 	background-color: #2a3142;
 	background-position: center top;
 	background-repeat: no-repeat;
@@ -188,28 +188,439 @@ body {
 	background-size: contain;
 }
 .jf-detail-info {
-	padding-left: 28px;
+	min-width: 0;
+	padding-left: 22px;
 }
 .jf-detail-name {
 	font-size: 30px;
 	font-weight: bold;
+	word-wrap: break-word;
 }
 .jf-detail-meta {
 	font-size: 17px;
 	color: #9aa0a6;
 	margin: 8px 0 16px 0;
+	word-wrap: break-word;
 }
 .jf-detail-buttons .enyo-button {
 	margin-right: 12px;
 	min-width: 150px;
 }
+.jf-detail-media {
+	margin: 12px 0 16px 0;
+	padding: 10px 12px;
+	background: #252d3c;
+	border-top: 1px solid #3a4558;
+	border-bottom: 1px solid #1a202b;
+}
+.jf-detail-media .jf-detail-meta {
+	margin: 0 0 8px 0;
+}
+.jf-detail-source {
+	margin-top: 6px;
+}
+.jf-detail-source-label {
+	font-size: 14px;
+	color: #9aa0a6;
+	margin-bottom: 3px;
+}
+.jf-detail-source-selector {
+	width: 100%;
+	height: 48px;
+	min-height: 44px;
+	min-width: 0;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	-webkit-border-image: none !important;
+	border-image: none !important;
+	border: 1px solid #465671;
+	border-radius: 8px;
+	color: #eef4f7;
+	background-color: #252d3c;
+	background-image: none !important;
+	text-shadow: none !important;
+	-webkit-box-align: center;
+}
+.jf-detail-source-selector .enyo-listselector-label {
+	display: none;
+}
+.jf-detail-source-selector .enyo-listselector-item {
+	min-width: 0;
+	width: 100%;
+	-webkit-box-flex: 1;
+	padding: 0 8px;
+	background: transparent;
+	background-image: none !important;
+	color: #eef4f7;
+}
+.jf-detail-source-selector .enyo-listselector-item .enyo-menucheckitem-caption,
+.jf-detail-source-selector .enyo-listselector-item .enyo-menuitem-caption {
+	min-width: 0;
+	font-size: 16px;
+	line-height: 46px;
+	color: #eef4f7;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.jf-detail-source-selector .enyo-listselector-arrow {
+	width: 24px;
+	height: 46px;
+	min-height: 46px;
+	-webkit-box-flex: 0;
+}
+.jf-detail-probe {
+	margin-top: 8px;
+	font-size: 14px;
+	line-height: 20px;
+	color: #c6d0db;
+	word-wrap: break-word;
+}
+.jf-detail-actions {
+	margin-top: 16px;
+}
+.jf-detail-actions .enyo-button {
+	-webkit-box-flex: 0 !important;
+	-webkit-flex: 0 1 auto !important;
+	flex: 0 1 auto !important;
+	box-sizing: border-box;
+	height: 48px;
+	min-height: 48px;
+	min-width: 108px;
+	margin: 0 10px 10px 0;
+	padding: 0 14px;
+	border: 1px solid #465671;
+	border-radius: 8px;
+	-webkit-border-image: none !important;
+	border-image: none !important;
+	background-color: #252d3c;
+	background-image: none !important;
+	color: #eef4f7;
+	font-size: 17px;
+	line-height: 46px;
+	text-shadow: none !important;
+	-webkit-appearance: none;
+}
+.jf-detail-actions .enyo-button-affirmative {
+	width: 240px;
+	max-width: 280px;
+	min-width: 200px;
+	background-color: #a8e889;
+	border-color: #c9f8b7;
+	color: #102117;
+}
+.jf-detail-actions .enyo-button:last-child {
+	margin-right: 0;
+}
+.jf-detail-actions .enyo-button.enyo-button-down,
+.jf-detail-actions .enyo-button.enyo-button-depressed,
+.jf-detail-actions .enyo-button.enyo-held,
+.jf-detail-actions .enyo-button:active {
+	background-color: #31465e;
+	background-image: none !important;
+	border-color: #b6d88b;
+	color: #ffffff;
+}
+.jf-detail-actions .enyo-button-affirmative.enyo-button-down,
+.jf-detail-actions .enyo-button-affirmative.enyo-button-depressed,
+.jf-detail-actions .enyo-button-affirmative.enyo-held,
+.jf-detail-actions .enyo-button-affirmative:active {
+	background-color: #7cc75c;
+	border-color: #edffd9;
+	color: #0b1a10;
+}
+.jf-detail-actions .enyo-button:focus {
+	outline: 2px solid #d9ffb9;
+	outline-offset: 2px;
+}
+.jf-detail-actions .enyo-button.enyo-button-disabled {
+	opacity: 1;
+	background-color: #3b4655;
+	background-image: none !important;
+	border-color: #566476;
+	color: #8d9aa7;
+	text-shadow: none !important;
+}
 .jf-detail-info .jf-message {
 	padding-left: 0;
+}
+.jf-detail-info .jf-message:empty {
+	display: none;
 }
 .jf-detail-overview {
 	font-size: 18px;
 	line-height: 26px;
 	margin-top: 10px;
+}
+
+/* Detail-only popup surfaces. The stock Enyo theme uses border images and
+   light gradients; keep these menus in the same slate/green world as detail. */
+.jf-detail-menu {
+	min-width: 280px;
+	max-width: 480px;
+	padding: 6px;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	border: 1px solid #52617a !important;
+	border-radius: 8px;
+	-webkit-border-image: none !important;
+	border-image: none !important;
+	background: #202938 !important;
+	color: #eef4f7;
+	text-shadow: none !important;
+}
+.jf-detail-menu .enyo-popup-inner,
+.jf-detail-menu .enyo-menu-inner {
+	margin: 0;
+}
+.jf-detail-menu .enyo-menuitem,
+.jf-detail-menu .enyo-listselector-item,
+.jf-detail-menu .enyo-item {
+	min-height: 44px;
+	padding: 0 12px;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	border: 0;
+	background: #202938 !important;
+	background-image: none !important;
+	color: #eef4f7;
+}
+.jf-detail-menu .enyo-menuitem-caption,
+.jf-detail-menu .enyo-menucheckitem-caption {
+	font-size: 17px;
+	line-height: 44px;
+	color: #eef4f7;
+	text-shadow: none !important;
+}
+.jf-detail-menu .enyo-held,
+.jf-detail-menu .enyo-item-selected,
+.jf-detail-menu .enyo-menuitem.enyo-button-down,
+.jf-detail-menu .enyo-menuitem.enyo-button-depressed {
+	background: #31465e !important;
+	background-image: none !important;
+	color: #ffffff;
+}
+.jf-detail-menu .enyo-menuitem:focus,
+.jf-detail-menu .enyo-listselector-item:focus {
+	outline: 2px solid #d9ffb9;
+	outline-offset: -2px;
+}
+.jf-detail-settings {
+	width: 460px;
+	max-width: 100%;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	border: 1px solid #52617a !important;
+	border-radius: 12px;
+	-webkit-border-image: none !important;
+	border-image: none !important;
+	background: #202938 !important;
+	color: #eef4f7;
+	text-shadow: none !important;
+}
+.jf-detail-settings .enyo-modaldialog-container {
+	margin: 0;
+	padding: 16px;
+}
+.jf-detail-settings .enyo-modaldialog-title {
+	margin-bottom: 12px;
+	font-size: 18px;
+	font-weight: bold;
+	color: #ffffff;
+}
+.jf-detail-settings .enyo-group,
+.jf-detail-settings .group {
+	margin: 8px 0;
+	padding: 0;
+	border: 1px solid #465671 !important;
+	border-radius: 8px;
+	-webkit-border-image: none !important;
+	border-image: none !important;
+	background: #252d3c !important;
+}
+.jf-detail-settings .enyo-group-inner {
+	-webkit-border-image: none;
+	border: 0;
+	background: none;
+}
+.jf-detail-settings .enyo-item {
+	min-height: 48px;
+	padding: 10px;
+	border-top: 1px solid #3a4558;
+	border-bottom: 0;
+	background: #252d3c !important;
+	background-image: none !important;
+	color: #eef4f7;
+}
+.jf-detail-settings .enyo-listselector {
+	height: 44px;
+	min-height: 44px;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	border: 1px solid #465671;
+	border-radius: 8px;
+	-webkit-border-image: none !important;
+	border-image: none !important;
+	background: #202938 !important;
+	background-image: none !important;
+	color: #eef4f7;
+}
+.jf-detail-settings .enyo-item > .enyo-listselector {
+	margin: 0;
+	padding: 0;
+}
+.jf-detail-settings .enyo-listselector .enyo-item {
+	height: 42px;
+	min-height: 0;
+	padding: 0 8px;
+	border: 0;
+	line-height: 42px;
+	background: none !important;
+}
+.jf-detail-settings .enyo-listselector-label {
+	display: none;
+}
+.jf-detail-settings .enyo-listselector-item {
+	min-width: 0;
+	width: 100%;
+	-webkit-box-flex: 1;
+	padding: 0 8px;
+}
+.jf-detail-settings .enyo-listselector-item .enyo-menucheckitem-caption,
+.jf-detail-settings .enyo-listselector-item .enyo-menuitem-caption {
+	min-width: 0;
+	font-size: 16px;
+	line-height: 42px;
+	color: #eef4f7;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.jf-detail-settings .enyo-listselector-arrow {
+	min-height: 42px;
+	height: 42px;
+	width: 24px;
+	-webkit-box-flex: 0;
+}
+.jf-detail-settings .enyo-button {
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	height: 48px;
+	min-height: 48px;
+	margin: 0 8px 0 0;
+	padding: 0 14px;
+	border: 1px solid #465671;
+	border-radius: 8px;
+	-webkit-border-image: none !important;
+	border-image: none !important;
+	background: #252d3c !important;
+	background-image: none !important;
+	color: #eef4f7;
+	font-size: 17px;
+	line-height: 46px;
+	text-shadow: none !important;
+	-webkit-appearance: none;
+}
+.jf-detail-settings .enyo-button-affirmative {
+	background: #a8e889 !important;
+	border-color: #c9f8b7;
+	color: #102117;
+}
+.jf-detail-settings .enyo-button.enyo-button-down,
+.jf-detail-settings .enyo-button.enyo-button-depressed,
+.jf-detail-settings .enyo-button.enyo-held,
+.jf-detail-settings .enyo-button:active {
+	background: #31465e !important;
+	background-image: none !important;
+	color: #ffffff;
+}
+.jf-detail-settings .enyo-button-affirmative.enyo-button-down,
+.jf-detail-settings .enyo-button-affirmative.enyo-button-depressed,
+.jf-detail-settings .enyo-button-affirmative.enyo-held,
+.jf-detail-settings .enyo-button-affirmative:active {
+	background: #7cc75c !important;
+	color: #0b1a10;
+}
+.jf-detail-settings .enyo-button:focus {
+	outline: 2px solid #d9ffb9;
+	outline-offset: 2px;
+}
+.jf-detail-settings .enyo-button.enyo-button-disabled {
+	opacity: 1;
+	background: #3b4655 !important;
+	border-color: #566476;
+	color: #8d9aa7;
+}
+
+/* The detail Back control uses the same slate treatment, but stays compact. */
+.jf-detail-view .jf-header .enyo-button {
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	height: 44px;
+	min-height: 44px;
+	padding: 0 14px;
+	line-height: 42px;
+	border: 1px solid #465671;
+	border-radius: 8px;
+	-webkit-border-image: none !important;
+	border-image: none !important;
+	background: #252d3c !important;
+	background-image: none !important;
+	color: #eef4f7;
+	text-shadow: none !important;
+	-webkit-appearance: none;
+}
+.jf-detail-view .jf-header .enyo-button.enyo-button-down,
+.jf-detail-view .jf-header .enyo-button.enyo-button-depressed,
+.jf-detail-view .jf-header .enyo-button:active {
+	background: #31465e !important;
+	background-image: none !important;
+	border-color: #b6d88b;
+}
+.jf-detail-view .jf-header .enyo-button:focus {
+	outline: 2px solid #d9ffb9;
+	outline-offset: 2px;
+}
+
+/* A TouchPad is still a tablet at 768px wide, but portrait needs the facts
+   and actions across the full page rather than beside a poster. */
+@media screen and (max-width: 800px) {
+	.jf-detail {
+		padding: 16px;
+		display: block;
+	}
+	.jf-detail-art {
+		width: 206px;
+		max-width: 100%;
+		height: 300px;
+		margin: 0 auto;
+		background-position: center top;
+	}
+	.jf-detail-info {
+		width: auto !important;
+		padding: 16px 0 0 0;
+	}
+	.jf-detail-actions {
+		display: block;
+	}
+	.jf-detail-actions .enyo-button {
+		display: inline-block;
+		width: auto;
+		max-width: none;
+		min-width: 120px;
+		vertical-align: top;
+	}
+	.jf-detail-actions .enyo-button-affirmative {
+		display: block;
+		width: 100%;
+		max-width: none;
+		min-width: 0;
+		margin-right: 0;
+		margin-bottom: 12px;
+	}
+	.jf-detail-settings {
+		width: 280px;
+	}
 }
 
 /* ---- player ------------------------------------------------------------ */
@@ -232,58 +643,427 @@ body {
 	width: 100%;
 	height: 100%;
 }
-/* A line of text over the picture: "Starting...", errors. */
-.jf-player-status {
+.jf-player-feedback {
 	position: absolute;
-	left: 0;
-	right: 0;
-	top: 45%;
-	padding: 0 60px;
-	font-size: 20px;
-	color: #e8eaed;
+	left: 24px;
+	right: 24px;
+	top: 41%;
+	max-width: 520px;
+	margin: auto;
 	text-align: center;
-	text-shadow: 0 0 4px #000000;
+	pointer-events: none;
+}
+.jf-player-status {
+	display: inline-block;
+	padding: 12px 18px;
+	font-size: 16px;
+	line-height: 1.45;
+	color: #f1f4ef;
+	background: #151d20;
+	border-radius: 8px;
+}
+.jf-player-feedback .jf-player-retry {
+	display: table;
+	margin: 8px auto 0;
+	pointer-events: auto;
 }
 .jf-player-top,
 .jf-transport {
 	position: absolute;
 	left: 0;
 	right: 0;
-	background: rgba(20, 24, 34, 0.85);
-	padding: 6px 10px;
+	color: #f1f4ef;
+	background: rgba(13, 19, 23, 0.94);
+	padding: 12px 28px;
 }
 .jf-player-top {
 	top: 0;
-	border-bottom: 1px solid #2c3446;
+	background: -webkit-gradient(linear, left top, left bottom, from(#0d1317), to(rgba(13, 19, 23, 0.89)));
 }
 .jf-transport {
 	bottom: 0;
-	border-top: 1px solid #2c3446;
+	padding-top: 8px;
+	padding-bottom: 20px;
+	background: -webkit-gradient(linear, left bottom, left top, from(#0d1317), to(rgba(13, 19, 23, 0.9)));
 }
 .jf-player-title {
-	font-size: 20px;
-	color: #e8eaed;
-	padding: 0 14px;
+	font-size: 22px;
+	font-weight: 600;
+	padding-left: 16px;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
+.jf-player-route {
+	margin: 0 14px 0 16px;
+	padding-left: 14px;
+	border-left: 1px solid #61706d;
+	color: #d6e4c5;
+	font-size: 14px;
+	white-space: nowrap;
+}
 .jf-player-top .enyo-button,
-.jf-transport .enyo-button {
+.jf-transport .enyo-button,
+.jf-player-feedback .enyo-button,
+.jf-player-more-panel .enyo-button,
+.jf-player .jf-player-unlock {
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	-webkit-border-image: none;
+	border-image: none;
+	border: 1px solid #4c595b;
+	-webkit-border-radius: 8px;
+	border-radius: 8px;
+	background: #202b2e;
+	color: #f1f4ef;
+	font-size: 15px;
+	line-height: 20px;
+	min-height: 44px;
+	margin: 0;
+	padding: 11px 14px;
+	white-space: nowrap;
+}
+.jf-player .jf-player-back {
+	background: transparent;
+}
+.jf-player-top .enyo-button:focus,
+.jf-transport .enyo-button:focus,
+.jf-player-feedback .enyo-button:focus,
+.jf-player-more-panel .enyo-button:focus,
+.jf-player .jf-player-unlock:focus {
+	outline: 2px solid #dceab3;
+	outline-offset: 2px;
+}
+.jf-player-top .enyo-button.enyo-button-down,
+.jf-transport .enyo-button.enyo-button-down,
+.jf-player-feedback .enyo-button.enyo-button-down,
+.jf-player-more-panel .enyo-button.enyo-button-down,
+.jf-player .jf-player-unlock.enyo-button-down {
+	-webkit-border-image: none;
+	border-image: none;
+	background: #3c4a4b;
+}
+.jf-player-command-row {
+	position: relative;
+	margin-top: 6px;
+}
+.jf-player-primary .enyo-button {
+	min-width: 68px;
 	margin: 0 4px;
 }
-.jf-pause {
-	min-width: 84px;
+.jf-player .jf-pause,
+.jf-player .jf-player-retry {
+	border-color: #dceab3;
+	background: #dceab3;
+	color: #172019;
+	font-weight: 600;
+}
+.jf-player .jf-pause {
+	min-width: 96px;
+}
+.jf-player .jf-pause.enyo-button-down,
+.jf-player .jf-player-retry.enyo-button-down {
+	background: #bacc94;
+}
+.jf-player-lock {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+}
+.jf-player .jf-player-unlock {
+	position: absolute;
+	z-index: 70;
+	left: 28px;
+	bottom: 20px;
+	background: #111a1d;
+}
+.jf-player-quick .enyo-button {
+	margin-left: 4px;
+	border-color: transparent;
+	background: transparent;
+	color: #d8e1de;
+}
+.jf-player-quick .enyo-button:last-child,
+.jf-player-quick .enyo-button.enyo-button-down {
+	background: #2a3636;
+}
+.jf-player-quick .jf-player-track-on {
+	color: #eaf3d0;
+	background: #2a392e;
+}
+.jf-subtitle-overlay {
+	position: absolute;
+	z-index: 2;
+	left: 12%;
+	right: 12%;
+	bottom: 40px;
+	text-align: center;
+	pointer-events: none;
+}
+.jf-subtitle-raised {
+	bottom: 128px;
+}
+.jf-subtitle-text {
+	display: inline-block;
+	max-width: 100%;
+	padding: 5px 12px 7px;
+	background: rgba(8, 12, 13, 0.90);
+	color: #fff;
+	font-size: 27px;
+	line-height: 1.27;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
+}
+.jf-subtitle-small { font-size: 21px; }
+.jf-subtitle-large { font-size: 34px; }
+.jf-subtitle-text[data-background="0"] {
+	background: transparent;
+}
+.jf-subtitle-text[data-background="25"] {
+	background: rgba(8, 12, 13, 0.25);
+}
+.jf-subtitle-text[data-background="50"] {
+	background: rgba(8, 12, 13, 0.50);
+}
+.jf-subtitle-text[data-background="0"],
+.jf-subtitle-text[data-background="25"],
+.jf-subtitle-text[data-background="50"] {
+	text-shadow: 0 1px 2px #080c0d, 0 0 3px #080c0d;
+}
+.jf-player-symbol:before {
+	content: "";
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+	margin-right: 7px;
+	vertical-align: -4px;
+	background: url(../images/player-controls.png) no-repeat;
+}
+.jf-symbol-audio:before { background-position: 0 0; }
+.jf-symbol-subtitles:before { background-position: -18px 0; }
+.jf-symbol-more:before { background-position: -36px 0; }
+.jf-symbol-lock:before { background-position: -54px 0; }
+.jf-symbol-unlock:before { background-position: -72px 0; }
+.jf-symbol-rewind:before { background-position: -90px 0; }
+.jf-symbol-forward:before { background-position: -108px 0; }
+.jf-pause:before { background-position: -126px 0; }
+.jf-pause.jf-symbol-play:before { background-position: -144px 0; }
+.jf-player .jf-player-skip {
+	position: absolute;
+	right: 28px;
+	bottom: 100%;
+	margin-bottom: 12px;
 }
 .jf-clock {
-	font-size: 16px;
-	color: #e8eaed;
-	padding: 0 10px;
-	min-width: 56px;
-	text-align: center;
+	min-width: 58px;
+	font-size: 15px;
+	font-variant-numeric: tabular-nums;
 }
-.jf-transport .enyo-slider {
-	margin: 0 6px;
+.jf-runtime {
+	color: #b6c4c1;
+	text-align: right;
+}
+.jf-seek-track {
+	position: relative;
+	min-width: 0;
+	margin: 0 14px;
+}
+.jf-seek-fill {
+	position: absolute;
+	z-index: 1;
+	left: 0;
+	top: 21px;
+	height: 4px;
+	width: 0;
+	-webkit-border-radius: 2px;
+	border-radius: 2px;
+	background: #dceab3;
+	pointer-events: none;
+}
+.jf-loop-range {
+	position: absolute;
+	z-index: 2;
+	top: 16px;
+	height: 11px;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	border: 1px solid #a7c4e0;
+	background: rgba(167, 196, 224, 0.28);
+	pointer-events: none;
+}
+.jf-seek-preview {
+	position: absolute;
+	z-index: 52;
+	bottom: 100%;
+	width: 88px;
+	margin: 0 0 7px -44px;
+	padding: 8px 0;
+	-webkit-border-radius: 8px;
+	border-radius: 8px;
+	background: #dceab3;
+	color: #172019;
+	font-size: 17px;
+	font-weight: 600;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+	pointer-events: none;
+}
+.jf-transport .enyo-slider-progress {
+	height: 4px;
+	margin: 20px 0;
+	border: 0;
+	-webkit-border-image: none;
+	border-image: none;
+	-webkit-border-radius: 2px;
+	border-radius: 2px;
+	background: #627271;
+}
+.jf-transport .enyo-slider-inner {
+	margin: 0;
+}
+.jf-transport .enyo-slider-button {
+	width: 44px;
+	height: 44px;
+	margin: -20px -22px;
+	background: none;
+}
+.jf-transport .enyo-slider-button:after {
+	content: "";
+	position: absolute;
+	left: 15px;
+	top: 15px;
+	width: 14px;
+	height: 14px;
+	-webkit-border-radius: 7px;
+	border-radius: 50%;
+	background: #dceab3;
+}
+.jf-transport .enyo-slider-button.enyo-button-down:after {
+	background: #f1ffd4;
+}
+.jf-player-more-scrim {
+	position: absolute;
+	z-index: 81;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+}
+.jf-player-more-panel {
+	position: absolute;
+	z-index: 82;
+	top: 76px;
+	right: 28px;
+	width: 360px;
+	max-height: 78%;
+	overflow: auto;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	background: #151d20;
+	-webkit-border-radius: 14px;
+	border-radius: 14px;
+	-webkit-box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42);
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42);
+}
+.jf-player-panel-heading {
+	padding: 12px 16px;
+	font-size: 19px;
+	font-weight: 600;
+	color: #f1f4ef;
+}
+.jf-player-panel-heading .enyo-button {
+	background: transparent;
+}
+.jf-player-panel-section {
+	padding: 14px 16px 16px;
+	border-top: 1px solid #354044;
+}
+.jf-player-panel-route,
+.jf-player-panel-label {
+	font-size: 16px;
+	font-weight: 600;
+	color: #f1f4ef;
+}
+.jf-player-panel-meta {
+	margin-top: 5px;
+	font-size: 14px;
+	line-height: 1.45;
+	color: #b6c4c1;
+	white-space: normal;
+}
+.jf-player-panel-actions {
+	margin-top: 12px;
+}
+.jf-player-panel-actions .enyo-button + .enyo-button {
+	margin-left: 8px;
+}
+.jf-player-more-panel .jf-player-choice {
+	border-color: #dceab3;
+	color: #dceab3;
+	background: #2a392e;
+}
+.jf-track-status {
+	margin: 0 0 10px;
+	color: #eaf3d0;
+}
+.jf-track-list .jf-track-row {
+	display: block;
+	width: 100%;
+	text-align: left;
+	white-space: normal;
+	word-wrap: break-word;
+}
+.jf-track-row + .jf-track-row {
+	margin-top: 7px;
+}
+.jf-track-list .jf-track-row.enyo-button-disabled {
+	opacity: 1;
+	color: #a7b5b2;
+	border-color: #364446;
+	background: #192427;
+}
+.jf-subtitle-setting-label {
+	margin-top: 18px;
+}
+@media screen and (max-width: 550px) {
+	.jf-player-primary {
+		-webkit-box-pack: end !important;
+	}
+	.jf-player-top .jf-player-route {
+		display: none !important;
+	}
+	.jf-player-more-panel {
+		right: 12px;
+		left: 12px;
+		width: auto;
+	}
+	.jf-subtitle-overlay {
+		left: 7%;
+		right: 7%;
+	}
+	.jf-subtitle-text { font-size: 20px; }
+	.jf-subtitle-small { font-size: 16px; }
+	.jf-subtitle-large { font-size: 25px; }
+	.jf-subtitle-backgrounds .enyo-button {
+		padding-left: 6px;
+		padding-right: 6px;
+	}
+	.jf-player .jf-player-unlock {
+		left: 12px;
+	}
+	.jf-player-primary .enyo-button {
+		margin-right: 3px;
+		margin-left: 3px;
+		min-width: 60px;
+		padding-left: 6px;
+		padding-right: 6px;
+	}
+	.jf-player-primary .jf-player-symbol:before {
+		margin-right: 3px;
+	}
+
 }
 .jf-header .jf-search {
 	background: #eef0f4;
@@ -436,6 +1216,29 @@ body {
 .enyo-popup,
 .enyo-popup .enyo-item {
 	color: #2b2f36;
+}
+
+/* The detail hooks must win over the generic popup text rule above. */
+.enyo-popup.jf-detail-menu,
+.enyo-popup.jf-detail-menu .enyo-item,
+.enyo-popup.jf-detail-menu .enyo-menuitem,
+.enyo-popup.jf-detail-menu .enyo-menuitem-caption,
+.enyo-popup.jf-detail-menu .enyo-menucheckitem-caption,
+.enyo-popup.jf-detail-settings,
+.enyo-popup.jf-detail-settings .enyo-item,
+.enyo-popup.jf-detail-settings .enyo-menuitem-caption,
+.enyo-popup.jf-detail-settings .enyo-menucheckitem-caption {
+	color: #eef4f7 !important;
+}
+.jf-detail-settings .jf-dialog-note {
+	color: #c6d0db;
+}
+.jf-detail-view .jf-header {
+	background: #1b2130 !important;
+	background-image: none !important;
+	-webkit-border-image: none !important;
+	border-image: none !important;
+	border-bottom: 1px solid #2c3446;
 }
 
 /* ---- music dashboard (dashboard.html) ----------------------------------- */
@@ -889,30 +1692,52 @@ body {
 	padding: 6px 0 2px;
 }
 
-/* Video: smaller bars over the picture. */
+/* Keep the same control order on narrow screens. */
 .jf-phone .jf-player-top,
 .jf-phone .jf-transport {
-	padding: 3px 4px;
+	padding-left: 12px;
+	padding-right: 12px;
 }
 .jf-phone .jf-player-title {
-	font-size: 15px;
-	padding: 0 6px;
+	font-size: 17px;
+	padding-left: 12px;
 }
-.jf-phone .jf-player-top .enyo-button,
-.jf-phone .jf-transport .enyo-button {
-	margin: 0 2px;
+.jf-phone .jf-player-route {
+	margin-left: 8px;
+	padding-left: 8px;
+	font-size: 12px;
+}
+.jf-phone .jf-seek-track {
+	margin-right: 9px;
+	margin-left: 9px;
 }
 .jf-phone .jf-pause {
-	min-width: 0;
+	min-width: 84px;
 }
 .jf-phone .jf-clock {
 	font-size: 13px;
-	padding: 0 4px;
-	min-width: 0;
+	min-width: 45px;
 }
-.jf-phone .jf-player-status {
-	font-size: 16px;
-	padding: 0 10px;
+.jf-phone .jf-player .jf-player-skip {
+	right: 12px;
+}
+.jf-phone .jf-player-quick .enyo-button {
+	padding-left: 8px;
+	padding-right: 8px;
+	min-width: 44px;
+	font-size: 0;
+}
+.jf-phone .jf-player-lock,
+.jf-phone .jf-player .jf-player-unlock {
+	min-width: 44px;
+	font-size: 0;
+	padding-left: 8px;
+	padding-right: 8px;
+}
+.jf-phone .jf-player-quick .jf-player-symbol:before,
+.jf-phone .jf-player-lock:before,
+.jf-phone .jf-player-unlock:before {
+	margin-right: 0;
 }
 
 /* Dialogs fit the screen: Enyo makes them 320 wide plus a 24 pixel frame each side. */
