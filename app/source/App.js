@@ -550,25 +550,25 @@ enyo.kind({
 		this.$.network.open(source);
 	},
 
-	playNetworkFile: function(inSender, source, path) {
+	playNetworkFile: function(inSender, source, path, entries) {
 		var self = this;
-		var url = JF.networkMediaUrl(source, path);
-		if (!url) {
-			this.$.network.setMessage("This file cannot be streamed directly.");
-			return;
-		}
 		this.cancelVideoOpen();
 		var attempt = this.videoOpenAttempt = {};
+		var serial = this.$.network.requestSerial;
 		this.$.network.setMessage("Opening stream…");
-		JF.relay.open(url, function(localUrl) {
-			if (attempt !== self.videoOpenAttempt) return;
-			if (!localUrl) {
-				self.$.network.setMessage("Could not open the stream. Please try again.");
+		var cancel = JF.networkPlaybackPlan(source, path, function(plan) {
+			if (attempt !== self.videoOpenAttempt || serial !== self.$.network.requestSerial) return;
+			self.cancelNetworkProbe = null;
+			if (!plan || (!plan.direct && !plan.transcode)) {
+				self.$.network.setMessage(plan && plan.reason || "Could not open this source.");
 				return;
 			}
+			plan.source = source;
+			plan.path = path.slice(0);
 			self.$.network.setMessage("");
-			self.openLocalVideo(localUrl + "/video.mp4", path[path.length - 1]);
+			self.openLocalVideo("", path[path.length - 1], JF.networkSubtitleTracks(source, path, entries || []), plan);
 		});
+		if (attempt === this.videoOpenAttempt) this.cancelNetworkProbe = cancel;
 	},
 
 	// The music bar sits under every screen except the Now Playing screen itself.
@@ -703,9 +703,9 @@ enyo.kind({
 	// This is intentionally narrower than a general URL player. Topaz owns the
 	// loopback relay and can pass its opaque address without leaking any account
 	// token or bridge capability into a window launch.
-	openLocalVideo: function(url, title) {
+	openLocalVideo: function(url, title, subtitles, network) {
 		url = JF.localVideoUrl(url);
-		if (!url) {
+		if (!url && !network) {
 			this.$.detail.$.note.setContent("Invalid local video address.");
 			return false;
 		}
@@ -717,7 +717,7 @@ enyo.kind({
 		this.stack.push({view: "player"});
 		this.$.pane.selectViewByName("player");
 		this.showMusicBar("player");
-		this.$.player.playLocalUrl(url, title);
+		this.$.player.playLocalUrl(url, title, subtitles, network);
 		return true;
 	},
 
@@ -751,6 +751,8 @@ enyo.kind({
 
 	cancelVideoOpen: function() {
 		this.videoOpenAttempt = null;
+		if (this.cancelNetworkProbe) this.cancelNetworkProbe();
+		this.cancelNetworkProbe = null;
 		if (this.cancelSystemWarm) this.cancelSystemWarm();
 		this.cancelSystemWarm = null;
 	},

@@ -1053,5 +1053,67 @@ utun10: flags=8051<UP,POINTOPOINT>
         self.assertNotIn("tonemap", media_bridge.video_filter(False))
 
 
+class NetworkPlaybackTests(unittest.TestCase):
+    _start_server = MediaBridgeTests._start_server
+    _request_from = MediaBridgeTests._request_from
+
+    def test_network_route_security_and_seek(self):
+        bridge = FakeProbeBridge(None)
+        server, thread = self._start_server(bridge)
+        try:
+            for route in ("library-probe", "library-transcode", "library-subtitle"):
+                filename = "clip.srt" if route == "library-subtitle" else "clip.mp4"
+                for path in ("/v1/%s/%s/nas/%%2e%%2e/%s" % (CAPABILITY, route, filename),
+                             "/v1/%s/%s/nas/a%%2fb/%s" % (CAPABILITY, route, filename)):
+                    self.assertEqual(self._request_from(server, path)[0], 400)
+                self.assertEqual(self._request_from(server, "/v1/%s/%s/nas/%s" % ("B" * 24, route, filename))[0], 404)
+            for query in ("startSeconds=-1", "startSeconds=2&startSeconds=3", "format=mp4", "extra=1"):
+                self.assertEqual(self._request_from(server, "/v1/%s/library-transcode/nas/clip.mp4?%s" % (CAPABILITY, query))[0], 400)
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+            server.server_close()
+        self.assertEqual(bridge.probe_calls, 0)
+        self.assertEqual(bridge.upstream.calls, 0)
+
+    def test_probe_and_subtitle_routes(self):
+        result = media_bridge.probe_result_from_ffprobe("source-main", ffprobe_payload(), None, True)
+        bridge = FakeProbeBridge(result)
+        with tempfile.TemporaryDirectory() as root:
+            bridge.config = media_bridge.replace(bridge.config, nas_root=root)
+            Path(root, "clip.srt").write_bytes(b"\xef\xbb\xbf1\n00:00:00,000 --> 00:00:01,000\nHello\n")
+            server, thread = self._start_server(bridge)
+            try:
+                status, body = self._request_from(server, "/v1/%s/library-probe/nas/clip.mp4" % CAPABILITY)
+                self.assertEqual(status, 200)
+                self.assertTrue(json.loads(body)["miniSupported"])
+                status, body = self._request_from(server, "/v1/%s/library-subtitle/nas/clip.srt" % CAPABILITY)
+                self.assertEqual(status, 200)
+                self.assertTrue(body.startswith(b"1\n"))
+                self.assertIn(b"Hello", body)
+            finally:
+                server.shutdown()
+                thread.join(timeout=2)
+                server.server_close()
+        self.assertEqual(bridge.upstream.calls, 0)
+
+    def test_probe_duration_and_command_are_confined(self):
+        payload = ffprobe_payload()
+        payload["format"] = {"duration": "61.5"}
+        completed = SimpleNamespace(returncode=0, stdout=json.dumps(payload).encode())
+        with mock.patch.object(media_bridge.subprocess, "run", return_value=completed) as run:
+            result = media_bridge.probe_media_source(bridge_config(), "http://127.0.0.1/source/key", "network", None, True, network=True)
+        self.assertEqual(result.payload()["durationSeconds"], 61.5)
+        self.assertIn("-protocol_whitelist", run.call_args.args[0])
+        spec = media_bridge.SourceSpec("network", "network", network_file=("nas", ("clip.mp4",)))
+        request = media_bridge.StreamRequest("network", "12.5", None, "network", "ts")
+        command = media_bridge.build_ffmpeg_command(bridge_config(), "http://127.0.0.1/source/key", request, spec, "libx264", "aac")
+        self.assertEqual(command[command.index("-ss") + 1], "12.5")
+        self.assertIn("0:a:0?", command)
+        self.assertIn("-protocol_whitelist", command)
+        self.assertEqual(command[command.index("-f") + 1], "mpegts")
+        self.assertEqual(command[-1], "pipe:1")
+
+
 if __name__ == "__main__":
     unittest.main()

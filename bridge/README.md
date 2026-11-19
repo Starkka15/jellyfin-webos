@@ -12,13 +12,17 @@ Run this companion on a Mac on the same LAN as the TouchPad. The webOS app can c
 ## Optional network sources
 
 - Set `nas_root` to the absolute path of a mounted media directory. For a direct SMB fallback, install the `smbprotocol` package and add a `nas_smb` object with `server`, `share`, `username` and `password` to the private bridge configuration. Use a read-only account.
-- To add AList, copy `alist-webdav.example.json` to `alist-webdav.private.json` in this directory. Set the private WebDAV address and account, then give the file mode 600. Home can browse both sources and open compatible MP4/M4V files via byte-range reads.
+- To add AList, copy `alist-webdav.example.json` to `alist-webdav.private.json` in this directory. Set the private WebDAV address and account, then give the file mode 600.
+
+Open **NAS** or **AList** from Home. **Auto** tries direct streaming for MP4/M4V and uses the bridge to convert other supported sources or recover from a direct playback error. For a direct stream, **More** lets you choose **LAN bridge** and continue from the current position. Select **Auto** again to return to direct streaming.
+
+The in-app player lists SRT, ASS, SSA and VTT files next to the video. Use the same filename stem, optionally followed by a language suffix such as `Film.en.srt` for `Film.mp4`. ASS, SSA and VTT are converted to plain timed text.
 
 ## Playback limits
 
 The installed route uses a single FFmpeg slot. Audio-track changes and seeks on transcodes start a replacement stream at the media position. Fragmented MP4 output omits chapter tracks because they can cause an early end on the legacy webOS demuxer. The player still uses server-supplied intro and credit ranges.
 
-The bridge rejects Dolby Vision Profile 5. The in-app subtitle overlay handles text tracks exposed by the server. Bitmap subtitles and nearby subtitle files in the NAS/AList browser are not part of this implementation. The short NAS/AList playback checks do not establish full-length stability across sources.
+The bridge rejects Dolby Vision Profile 5. The in-app subtitle overlay handles server text tracks and the NAS/AList sidecar formats above. NAS/AList playback has been tested in short sessions on webOS CE 3.1.0. Full-length stability and stock webOS 3.0.5 remain to be verified.
 
 ## Checks
 

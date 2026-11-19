@@ -9,6 +9,7 @@ No request path, media title, token, or upstream URL is logged.
 import argparse
 from collections import OrderedDict
 import hmac
+import hashlib
 import http.client
 import ipaddress
 import json
@@ -26,7 +27,7 @@ import sys
 import threading
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal, InvalidOperation
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -63,6 +64,8 @@ OUTPUT_FORMATS = {
 }
 NAS_ROOT = "/Volumes/NAS"
 NAS_VIDEO_EXTENSIONS = frozenset({".mp4", ".m4v", ".mov", ".mkv", ".ts", ".avi", ".webm", ".3gp"})
+MAX_SUBTITLE_BYTES = 2 * 1024 * 1024
+SUBTITLE_FORMATS = {".srt": "srt", ".ass": "ass", ".ssa": "ass", ".vtt": "webvtt"}
 SMB_TRANSPORT_LOCK = threading.Lock()
 IFCONFIG_INET_RE = re.compile(
     r"^\s*inet\s+(?P<address>\d{1,3}(?:\.\d{1,3}){3})\s+netmask\s+"
@@ -155,6 +158,7 @@ class SourceSpec:
     direct_path: Optional[str] = None
     selected_source_id: Optional[str] = None
     lock: threading.Lock = field(default_factory=threading.Lock)
+    network_file: Optional[tuple] = None
 
 
 @dataclass(frozen=True)
@@ -166,6 +170,7 @@ class ProbeResult:
     mini_supported: bool
     reason: str
     requires_hdr_tonemap: bool
+    duration_seconds: Optional[float] = None
 
     def payload(self) -> dict:
         payload = {
@@ -178,6 +183,8 @@ class ProbeResult:
         }
         if self.audio is not None:
             payload["audio"] = self.audio
+        if self.duration_seconds is not None:
+            payload["durationSeconds"] = self.duration_seconds
         return payload
 
 
@@ -436,10 +443,10 @@ def parse_library_request(path: str, capability: str, route: str) -> tuple:
         raise BridgeError(404, "not found")
     if parsed.query or parsed.fragment:
         raise BridgeError(400, "invalid path")
-    source = parts[4] if route == "library" else "alist"
+    source = parts[4] if route != "alist-media" else "alist"
     if source not in {"nas", "alist"}:
         raise BridgeError(404, "not found")
-    raw_segments = parts[5:] if route == "library" else parts[4:]
+    raw_segments = parts[5:] if route != "alist-media" else parts[4:]
     if len(raw_segments) > 24:
         raise BridgeError(400, "invalid path")
     segments = []
@@ -452,9 +459,32 @@ def parse_library_request(path: str, capability: str, route: str) -> tuple:
                 or any(ord(c) < 32 or ord(c) == 127 for c in name)):
             raise BridgeError(400, "invalid path")
         segments.append(name)
-    if route == "alist-media" and Path(segments[-1]).suffix.lower() not in {".mp4", ".m4v"}:
+    if route == "alist-media" and (not segments or Path(segments[-1]).suffix.lower() not in {".mp4", ".m4v"}):
+        raise BridgeError(404, "not found")
+    if route == "library-subtitle" and (not segments or Path(segments[-1]).suffix.lower() not in SUBTITLE_FORMATS):
+        raise BridgeError(404, "not found")
+    if route in {"library-probe", "library-transcode"} and (
+        not segments or Path(segments[-1]).suffix.lower() not in NAS_VIDEO_EXTENSIONS
+    ):
         raise BridgeError(404, "not found")
     return source, tuple(segments)
+
+
+def subtitle_to_srt(config: Config, data: bytes, suffix: str) -> bytes:
+    text = data.decode("utf-16" if data.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig")
+    decoded = text.encode("utf-8")
+    if not decoded or b"\0" in decoded or len(decoded) > MAX_SUBTITLE_BYTES:
+        raise BridgeError(415, "invalid subtitle")
+    if suffix == ".srt":
+        return decoded
+    converted = subprocess.run(
+        [config.ffmpeg, "-hide_banner", "-v", "error", "-protocol_whitelist", "pipe",
+         "-f", SUBTITLE_FORMATS[suffix], "-i", "pipe:0", "-map", "0:s:0", "-f", "srt", "pipe:1"],
+        input=decoded, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=5, check=False,
+    )
+    if converted.returncode or not converted.stdout or len(converted.stdout) > MAX_SUBTITLE_BYTES:
+        raise BridgeError(415, "invalid subtitle")
+    return converted.stdout
 
 
 def open_nas_file(segments: tuple, root: str = NAS_ROOT) -> tuple:
@@ -992,14 +1022,18 @@ def probe_result_from_ffprobe(media_source_id: str, payload: object, selected_au
 
 
 def probe_media_source(config: Config, source_url: str, media_source_id: str,
-                       selected_audio_index: Optional[int], hdr_tonemap_available: bool) -> ProbeResult:
+                       selected_audio_index: Optional[int], hdr_tonemap_available: bool,
+                       network: bool = False) -> ProbeResult:
     """Probe only the loopback Range proxy; never pass Emby credentials to FFprobe."""
     command = [
         config.ffprobe, "-hide_banner", "-v", "error", "-rw_timeout", "10000000",
         "-probesize", str(FFPROBE_PROBESIZE_BYTES),
         "-analyzeduration", str(FFPROBE_ANALYZE_DURATION_MICROSECONDS),
-        "-show_streams", "-of", "json", source_url,
     ]
+    if network:
+        command.extend(["-format_whitelist", "mov,matroska,webm,mpegts,avi",
+                        "-protocol_whitelist", "http,tcp", "-show_format"])
+    command.extend(["-show_streams", "-of", "json", source_url])
     try:
         completed = subprocess.run(
             command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
@@ -1013,7 +1047,14 @@ def probe_media_source(config: Config, source_url: str, media_source_id: str,
         payload = json.loads(completed.stdout.decode("utf-8"))
     except (AttributeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ProbeError() from exc
-    return probe_result_from_ffprobe(media_source_id, payload, selected_audio_index, hdr_tonemap_available)
+    result = probe_result_from_ffprobe(media_source_id, payload, selected_audio_index, hdr_tonemap_available)
+    if network:
+        try:
+            duration = float(payload.get("format", {}).get("duration", 0))
+        except (AttributeError, TypeError, ValueError):
+            duration = 0
+        result = replace(result, duration_seconds=duration if 0 < duration <= float(MAX_START_SECONDS) else None)
+    return result
 
 
 def select_audio_stream(media_streams: object, requested: Optional[int], decoders: set) -> int:
@@ -1053,8 +1094,9 @@ def build_ffmpeg_command(config: Config, source_url: str, request: StreamRequest
     """Build argv only. The Emby token is never a command-line argument."""
     command = [
         config.ffmpeg, "-hide_banner", "-nostdin", "-loglevel", "error", "-rw_timeout", "20000000",
+        *(["-format_whitelist", "mov,matroska,webm,mpegts,avi", "-protocol_whitelist", "http,tcp"] if spec.network_file else []),
         "-ss", request.start_seconds, "-i", source_url,
-        "-map", "0:v:0", "-map", "0:%d" % spec.audio_stream_index, "-sn", "-dn",
+        "-map", "0:v:0", "-map", ("0:%d" % spec.audio_stream_index if spec.audio_stream_index is not None else "0:a:0?"), "-sn", "-dn",
         "-vf", video_filter(spec.requires_hdr_tonemap), "-r", "30",
         "-c:v", video_encoder, "-profile:v", "baseline", "-level:v", "3.1",
         "-b:v", "1800k", "-maxrate:v", "2200k", "-bufsize:v", "3600k",
@@ -1184,10 +1226,10 @@ class SourceRegistry:
     def add(self, request: StreamRequest) -> str:
         return self.add_source(request.item_id, request.media_source_id)
 
-    def add_source(self, item_id: str, media_source_id: Optional[str]) -> str:
+    def add_source(self, item_id: str, media_source_id: Optional[str], network_file: Optional[tuple] = None) -> str:
         key = secrets.token_urlsafe(18)
         with self._lock:
-            self._entries[key] = SourceSpec(item_id, media_source_id)
+            self._entries[key] = SourceSpec(item_id, media_source_id, network_file=network_file)
         return key
 
     def get(self, key: str) -> Optional[SourceSpec]:
@@ -1512,6 +1554,10 @@ class QuietHandler(BaseHTTPRequestHandler):
 class SourceHandler(QuietHandler):
     """Loopback-only Range proxy. It never exposes upstream headers or URLs."""
 
+    @staticmethod
+    def _alist_config():
+        return BridgeHandler._alist_config()
+
     def do_GET(self) -> None:
         self._proxy("GET")
 
@@ -1530,6 +1576,13 @@ class SourceHandler(QuietHandler):
         spec = bridge.sources.get(parts[3])
         if spec is None:
             self.send_safe_error(404, "not found")
+            return
+        if spec.network_file:
+            source, segments = spec.network_file
+            if source == "nas":
+                BridgeHandler._serve_nas(self, segments, method == "GET")
+            else:
+                BridgeHandler._serve_alist(self, segments, method)
             return
         try:
             connection, response = bridge.upstream.open_stream(spec, safe_range_header(self.headers.get("Range")), method)
@@ -1728,21 +1781,61 @@ class BridgeHandler(QuietHandler):
 
     def _network_library(self, method: str) -> bool:
         parts = urlsplit(self.path).path.split("/")
-        if len(parts) < 4 or parts[3] not in {"library", "alist-media"}:
+        if len(parts) < 4 or parts[3] not in {"library", "alist-media", "library-probe", "library-transcode", "library-subtitle"}:
             return False
         route = parts[3]
         try:
-            source, segments = parse_library_request(self.path, self.server.bridge.config.capability, route)
+            parsed = urlsplit(self.path)
+            parse_path = parsed.path if route == "library-transcode" and not parsed.fragment else self.path
+            source, segments = parse_library_request(parse_path, self.server.bridge.config.capability, route)
+            if route == "library-transcode":
+                query = parse_qs(parsed.query, keep_blank_values=True)
+                start = _query_value(query, "startSeconds")
+                start = "0" if start is None else start
+                output_format = _query_value(query, "format") or "ts"
+                if set(query) - {"startSeconds", "format"} or not SECONDS_RE.fullmatch(start) or Decimal(start) > MAX_START_SECONDS:
+                    raise BridgeError(400, "invalid query")
+                if output_format != "ts":
+                    raise BridgeError(400, "invalid output format")
         except BridgeError as exc:
             self.send_safe_error(exc.status, exc.message)
             return True
         if route == "alist-media":
             self._serve_alist(segments, method)
-        elif method == "GET":
+        elif route == "library-transcode" and method == "HEAD":
+            self._send_stream_headers(output_format)
+        elif route == "library-transcode" and method == "GET":
+            self._network_playback(source, segments, start)
+        elif route == "library-probe" and method == "GET":
+            self._network_playback(source, segments)
+        elif route == "library-subtitle" and method == "GET":
+            self._serve_library_subtitle(source, segments)
+        elif route == "library" and method == "GET":
             self._browse_library(source, segments)
         else:
             self.send_safe_error(405, "method not allowed")
         return True
+
+    def _network_playback(self, source: str, segments: tuple, start: Optional[str] = None) -> None:
+        bridge = self.server.bridge
+        source_id = hashlib.sha256(json.dumps([source, segments], ensure_ascii=True).encode("ascii")).hexdigest()
+        network_file = (source, segments)
+        if start is None:
+            key = bridge.sources.add_source(source_id, source_id, network_file)
+            try:
+                self._send_probe(bridge.probe_source(key, bridge.sources.get(key)))
+            except (ProbeError, OSError):
+                self.send_safe_error(502, "source metadata unavailable")
+            finally:
+                bridge.sources.remove(key)
+            return
+        if not bridge.transcode_slots.acquire(timeout=STREAM_RESTART_SLOT_WAIT_SECONDS):
+            self.send_safe_error(429, "transcoder busy")
+            return
+        try:
+            self._stream(StreamRequest(source_id, start, None, source_id, "ts"), network_file)
+        finally:
+            bridge.transcode_slots.release()
 
     @staticmethod
     def _alist_config():
@@ -1774,6 +1867,8 @@ class BridgeHandler(QuietHandler):
             except (WebDavError, OSError, ValueError):
                 self.send_safe_error(503, "AList directory unavailable")
                 return
+        for entry in entries:
+            entry["playable"] = not entry["directory"] and Path(entry["name"]).suffix.lower() in NAS_VIDEO_EXTENSIONS
         payload = json.dumps({"returnValue": True, "entries": entries}, separators=(",", ":")).encode("utf-8")
         try:
             self.send_response(200)
@@ -1786,6 +1881,61 @@ class BridgeHandler(QuietHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass
         self.close_connection = True
+
+    def _serve_library_subtitle(self, source: str, segments: tuple) -> None:
+        from library_webdav import WebDavError, open_file
+        config = self.server.bridge.config
+        try:
+            if source == "nas":
+                reader, size = open_nas_reader(segments, config.nas_smb,
+                    local_opener=lambda path: open_nas_file(path, config.nas_root),
+                    smb_source_address=config.listen_host)
+                try:
+                    if size > MAX_SUBTITLE_BYTES:
+                        raise BridgeError(413, "subtitle too large")
+                    data = bytearray()
+                    while len(data) < size:
+                        chunk = reader.read(min(TRANSCODER_CHUNK_BYTES, size - len(data)))
+                        if not chunk:
+                            raise BridgeError(502, "subtitle ended early")
+                        data.extend(chunk)
+                finally:
+                    reader.close()
+            else:
+                connection, response = open_file(self._alist_config(), segments, "GET", None)
+                try:
+                    if response.status == 404:
+                        raise BridgeError(404, "subtitle unavailable")
+                    if response.status != 200:
+                        raise BridgeError(502, "subtitle unavailable")
+                    data = response.read(MAX_SUBTITLE_BYTES + 1)
+                    if len(data) > MAX_SUBTITLE_BYTES:
+                        raise BridgeError(413, "subtitle too large")
+                finally:
+                    response.close()
+                    connection.close()
+            payload = subtitle_to_srt(config, bytes(data), Path(segments[-1]).suffix.lower())
+        except (BridgeError, NasFileError) as exc:
+            self.send_safe_error(exc.status, exc.message)
+            return
+        except UnicodeError:
+            self.send_safe_error(415, "unsupported subtitle encoding")
+            return
+        except (OSError, WebDavError, http.client.HTTPException, ValueError, subprocess.TimeoutExpired):
+            self.send_safe_error(502, "subtitle unavailable")
+            return
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(payload)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        finally:
+            self.close_connection = True
 
     def _serve_alist(self, segments: tuple, method: str) -> None:
         from library_webdav import open_file, WebDavError
@@ -2038,15 +2188,17 @@ class BridgeHandler(QuietHandler):
             watcher_finished.set()
             session.close(bridge)
 
-    def _stream(self, request: StreamRequest) -> None:
+    def _stream(self, request: StreamRequest, network_file: Optional[tuple] = None) -> None:
         bridge = self.server.bridge
-        key = bridge.sources.add(request)
+        key = (bridge.sources.add_source(request.item_id, request.media_source_id, network_file)
+               if network_file else bridge.sources.add(request))
         process = None
         watcher_finished = threading.Event()
         client_cancelled = threading.Event()
         try:
             spec = bridge.sources.get(key)
-            bridge.upstream.prepare(spec, request.audio_stream_index, bridge.audio_decoders)
+            if not network_file:
+                bridge.upstream.prepare(spec, request.audio_stream_index, bridge.audio_decoders)
             result = bridge.probe_source(key, spec)
             if not result.mini_supported:
                 raise UnsupportedMediaError(result.reason)
@@ -2115,14 +2267,13 @@ class BridgeApplication:
         return "http://127.0.0.1:%d/source/%s/%s" % (self.source_port, self.source_nonce, key)
 
     def probe_source(self, key: str, spec: SourceSpec) -> ProbeResult:
-        media_source_id = spec.selected_source_id
+        media_source_id = spec.media_source_id if spec.network_file else spec.selected_source_id
         if not isinstance(media_source_id, str) or not SOURCE_IDENTIFIER_RE.fullmatch(media_source_id):
             raise ProbeError()
         result = self.probe_cache.get(media_source_id)
         if result is None:
-            result = probe_media_source(
-                self.config, self.source_url(key), media_source_id, spec.audio_stream_index, self.hdr_tonemap_available,
-            )
+            args = (self.config, self.source_url(key), media_source_id, spec.audio_stream_index, self.hdr_tonemap_available)
+            result = probe_media_source(*args, network=True) if spec.network_file else probe_media_source(*args)
             self.probe_cache.put(media_source_id, result)
         spec.requires_hdr_tonemap = result.requires_hdr_tonemap
         return result
