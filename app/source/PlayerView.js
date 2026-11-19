@@ -192,7 +192,7 @@ enyo.kind({
 			// audio routing then treat this as media.
 			node.setAttribute("x-palm-media-audio-class", "media");
 			var self = this;
-			var names = ["loadedmetadata", "playing", "pause", "ended", "error"];
+			var names = ["loadedmetadata", "playing", "waiting", "pause", "ended", "error"];
 			for (var i = 0; i < names.length; i++) {
 				node.addEventListener(names[i], function(e) { self.videoEvent(e); }, false);
 			}
@@ -217,6 +217,8 @@ enyo.kind({
 	playItem: function(item, startTicks, routePlan) {
 		this.item = item;
 		this.localOnly = false;
+		this.networkPlayback = null;
+		this.networkTranscode = false;
 		this.localUrl = "";
 		this.routePlan = routePlan || null;
 		this.playbackMode = this.routePlan && this.routePlan.forceMac ? "mini" : "auto";
@@ -267,29 +269,36 @@ enyo.kind({
 	// A companion app can supply a validated loopback relay without making it
 	// look like an Emby library item. It deliberately has no reporting, stream
 	// selection or server-made-transcode path.
-	playLocalUrl: function(url, title) {
+	playLocalUrl: function(url, title, subtitles, network) {
 		url = JF.localVideoUrl ? JF.localVideoUrl(url) : "";
-		if (!url) {
+		if (!url && !network) {
 			this.setStatus("Invalid local video address.");
 			return false;
 		}
 		this.item = null;
 		this.localOnly = true;
 		this.localUrl = url;
+		this.networkPlayback = network || null;
+		this.networkTranscode = !!(network && !network.direct);
+		this.networkChecked = false;
 		this.routePlan = null;
 		this.playbackMode = "auto";
 		this.playbackChoice = null;
 		this.localFile = null;
 		this.audioStreams = [];
-		this.subtitleStreams = [];
+		this.subtitleStreams = subtitles || [];
 		this.audioIndex = null;
 		this.audioSwitch = null;
 		this.subtitleIndex = -1;
 		this.burnIndex = null;
 		this.clearTextSubtitle();
+		this.subtitleOffsetMs = 0;
+		this.subtitleSize = localStorage.getItem("jf.subtitleSize") || "medium";
+		this.applySubtitleSize();
+		this.applySubtitleBackground(localStorage.getItem("jf.subtitleBackground"));
 		this.$.title.setContent(title || "Local video");
 		this.$.audioButton.setShowing(false);
-		this.$.subtitleButton.setShowing(false);
+		this.$.subtitleButton.setShowing(this.subtitleStreams.length > 0);
 		this.setRetryShowing(false);
 		enyo.setFullScreen(true);
 		this.keepScreenOn(true);
@@ -427,6 +436,7 @@ enyo.kind({
 	// choice, then play it from startTicks.
 	startStream: function(startTicks) {
 		var self = this;
+		if (this.networkPlayback) this.playbackChoice = null;
 		var limit = this.item && this.item.RunTimeTicks ? this.item.RunTimeTicks - 50000000 : startTicks;
 		startTicks = Math.max(0, Math.min(startTicks, Math.max(0, limit)));
 		if (this.cancelMiniWarm) this.cancelMiniWarm();
@@ -503,6 +513,22 @@ enyo.kind({
 	},
 
 	startLocalStream: function(startTicks, request) {
+		if (this.networkPlayback) {
+			var self = this, route = this.networkPlayback, convert = this.networkTranscode;
+			var seconds = Math.floor(startTicks / 10000) / 1000;
+			var url = convert ? route.transcode + "?startSeconds=" + seconds + "&format=ts" : route.direct;
+			this.info = {method: convert ? "MacMini" : "DirectPlay", localBridge: true, elapsedClock: convert};
+			this.direct = !convert;
+			this.pendingSeek = this.direct && seconds ? seconds : null;
+			this.relayed = JF.relay.needed(url);
+			if (convert) this.setStatus("Preparing a LAN bridge stream…");
+			JF.relay.open(url, function(localUrl) {
+				if (request !== self.request || !self.playing) return;
+				if (localUrl) self.playUrl(convert ? localUrl : localUrl + "/video.mp4");
+				else self.showRetry("Could not open the stream. Please try again.");
+			});
+			return;
+		}
 		if (!this.localUrl) {
 			this.setStatus("Invalid local video address.");
 			return;
@@ -613,6 +639,11 @@ enyo.kind({
 			JF.miniProbeConfigured());
 	},
 
+	canChooseNetworkRoute: function() {
+		var route = this.networkPlayback;
+		return !!(route && route.direct && (route.transcode || (route.source && route.path)));
+	},
+
 	codecCaption: function(codec) {
 		codec = String(codec || "").toLowerCase();
 		if (codec === "h264" || codec === "avc") return "H.264";
@@ -675,11 +706,11 @@ enyo.kind({
 		if (!this.playing || this.controlsLocked) return;
 		this.showPanel("playback");
 		var source = this.routePlan && this.routePlan.source;
-		var mode = this.playbackMode === "mini" ? "mini" : "auto";
+		var mode = this.playbackMode === "mini" || this.networkTranscode ? "mini" : "auto";
 		this.$.moreRoute.setContent(this.routeCaption());
 		this.$.moreSource.setShowing(!!source);
 		if (source) this.$.moreSource.setContent(this.sourceCaption());
-		this.$.routeActions.setShowing(this.canChooseMacMini());
+		this.$.routeActions.setShowing(this.canChooseMacMini() || this.canChooseNetworkRoute());
 		this.$.autoRoute.addRemoveClass("jf-player-choice", mode === "auto");
 		this.$.autoRoute.setAttribute("aria-pressed", mode === "auto" ? "true" : "false");
 		this.$.miniRoute.addRemoveClass("jf-player-choice", mode === "mini");
@@ -728,6 +759,7 @@ enyo.kind({
 	},
 
 	selectPlaybackMode: function(mode) {
+		if (this.networkPlayback) { this.selectNetworkPlaybackMode(mode); return; }
 		if (mode === this.playbackMode) {
 			if (mode === "auto") this.playbackChoice = null;
 			this.restartControlsTimer();
@@ -766,6 +798,41 @@ enyo.kind({
 		});
 	},
 
+	selectNetworkPlaybackMode: function(mode) {
+		if (!this.playing || !this.canChooseNetworkRoute()) return;
+		if (mode === "auto") {
+			this.playbackChoice = null;
+			if (!this.networkTranscode) return;
+			this.networkTranscode = false;
+			this.networkChecked = false;
+			this.startStream(this.positionTicks());
+			return;
+		}
+		if (this.waitingForRoute || this.networkTranscode || this.playbackChoice) return;
+		var self = this, route = this.networkPlayback, request = this.request;
+		var choice = this.playbackChoice = {};
+		function switchRoute(plan) {
+			if (self.playbackChoice !== choice || self.request !== request || !self.playing) return;
+			self.playbackChoice = null;
+			if (!plan || !plan.transcode) {
+				self.setStatus(plan && plan.reason || "The LAN bridge cannot convert this source.");
+				self.showControls();
+				return;
+			}
+			plan.direct = route.direct;
+			plan.source = route.source;
+			plan.path = route.path;
+			self.networkPlayback = plan;
+			self.networkTranscode = true;
+			self.startStream(self.positionTicks());
+		}
+		if (route.transcode) switchRoute(route);
+		else {
+			this.setStatus("Checking the selected source…");
+			JF.networkPlaybackPlan(route.source, route.path, switchRoute, true);
+		}
+	},
+
 	retryClick: function() {
 		if (!this.playing || this.waitingForRoute) return;
 		this.setRetryShowing(false);
@@ -785,7 +852,7 @@ enyo.kind({
 			if (node && this.pendingSeek === null) {
 				this.lastTicks = Math.round(node.currentTime * 10000000);
 			}
-		} else if (this.info.method === "MacMini" && node &&
+		} else if (this.info.method === "MacMini" && !this.info.elapsedClock && node &&
 			typeof node.currentTime === "number" && isFinite(node.currentTime)) {
 			this.lastTicks = Math.round(this.startTicks + node.currentTime * 10000000);
 		} else {
@@ -817,7 +884,8 @@ enyo.kind({
 		if (this.direct && node && node.duration > 0 && isFinite(node.duration)) {
 			return Math.round(node.duration * 10000000);
 		}
-		return (this.item && this.item.RunTimeTicks) || 0;
+		return (this.item && this.item.RunTimeTicks) ||
+			(this.networkPlayback && Math.round(this.networkPlayback.duration * 10000000)) || 0;
 	},
 
 	// Once a second: keep the time display current while the controls are up,
@@ -1110,6 +1178,14 @@ enyo.kind({
 		}
 		var total = this.durationTicks();
 		ticks = this.seekLimit(ticks, total);
+		if (this.networkPlayback) {
+			this.playbackChoice = null;
+			if (this.waitingForRoute && this.direct) {
+				this.networkChecked = false;
+				this.startStream(ticks);
+				return;
+			}
+		}
 		if (this.loopEndTicks != null && (ticks < this.loopStartTicks || ticks >= this.loopEndTicks)) {
 			this.resetLoop();
 		}
@@ -1405,22 +1481,27 @@ enyo.kind({
 		var stream = this.streamByIndex(this.subtitleStreams, index);
 		if (this.routePlan && stream && !stream.isText) stream = null;
 		this.subtitleIndex = stream ? index : -1;
-		this.burnIndex = stream && !this.routePlan ? index : null;
+		this.burnIndex = stream && !this.routePlan && !stream.url ? index : null;
 		this.clearTextSubtitle();
 		this.$.subtitleButton.addRemoveClass("jf-player-track-on", this.subtitleIndex >= 0);
-		if (!stream || !this.routePlan) return;
-		var self = this, source = this.routePlan.source;
+		if (!stream || (!this.routePlan && !stream.url)) return;
+		var self = this;
 		var request = this.subtitleRequest = {};
 		this.subtitleNotice = "Loading subtitles…";
 		this.updateTrackStatus();
-		this.cancelSubtitle = JF.api.textSubtitle(this.item.Id, source.Id || this.item.Id, index, function(ok, text) {
+		var loaded = function(ok, text) {
 			if (self.subtitleRequest !== request) return;
 			self.subtitleCues = ok ? JF.parseSrt(text) : [];
 			self.subtitleNotice = self.subtitleCues.length ? "" : "Subtitles unavailable. Select this track again to retry.";
 			self.$.subtitleButton.addRemoveClass("jf-player-track-on", self.subtitleCues.length > 0);
 			self.updateTrackStatus();
 			self.renderSubtitle();
-		});
+		};
+		if (stream.url) this.cancelSubtitle = JF.networkGetText(stream.url, loaded);
+		else {
+			var source = this.routePlan.source;
+			this.cancelSubtitle = JF.api.textSubtitle(this.item.Id, source.Id || this.item.Id, index, loaded);
+		}
 	},
 
 	clearTextSubtitle: function() {
@@ -1455,7 +1536,8 @@ enyo.kind({
 	},
 
 	updateSubtitleOptions: function() {
-		var showing = this.panelMode === "subtitles" && !!this.routePlan && this.subtitleIndex >= 0;
+		var track = this.streamByIndex(this.subtitleStreams, this.subtitleIndex);
+		var showing = this.panelMode === "subtitles" && !!track && track.isText && (!!this.routePlan || !!track.url);
 		this.$.subtitleOptions.setShowing(showing);
 		if (!showing) return;
 		var delay = this.subtitleOffsetMs || 0;
@@ -1516,6 +1598,7 @@ enyo.kind({
 			var code = node.error ? node.error.code : "?";
 			JF.log("video error code " + code);
 			if (this.audioSwitch && this.restoreAudioTrack()) return;
+			if (this.networkPlayback && this.tryNetworkTranscode()) return;
 			if (this.wasShowing) {
 				// It was working: the connection dropped, often after a long pause.
 				// One try per drop: a stream that never starts again ends in the message below.
@@ -1557,6 +1640,9 @@ enyo.kind({
 			this.setRetryShowing(false);
 			if (this.subtitleCues && this.subtitleCues.length) this.renderSubtitle();
 			this.watchDecoder();
+		} else if (e.type === "waiting" && this.info && this.info.elapsedClock) {
+			this.buffering = true;
+			this.clockRun(false);
 		} else if (e.type === "pause") {
 			this.paused = true;
 			this.clockRun(false);
@@ -1576,6 +1662,34 @@ enyo.kind({
 			if (this.checkLoop()) node.play();
 			else this.finished();
 		}
+	},
+
+	tryNetworkTranscode: function() {
+		var route = this.networkPlayback;
+		if (!route || this.networkTranscode) return false;
+		var self = this, from = this.positionTicks(), request = this.request;
+		if (route.transcode) {
+			this.networkTranscode = true;
+			this.waitingForRoute = true;
+			this.$.video.setSrc("");
+			this.startStream(from);
+			return true;
+		}
+		if (!route.source || this.networkChecked) return false;
+		this.networkChecked = true;
+		this.waitingForRoute = true;
+		this.setStatus("Checking the selected source…");
+		JF.networkPlaybackPlan(route.source, route.path, function(plan) {
+			if (request !== self.request || !self.playing) return;
+			if (plan && plan.transcode) {
+				plan.direct = route.direct;
+				plan.source = route.source;
+				plan.path = route.path;
+				self.networkPlayback = plan;
+				self.tryNetworkTranscode();
+			} else self.showRetry(plan && plan.reason || "Could not play this stream.");
+		}, true);
+		return true;
 	},
 
 	// The TouchPad's player can say "playing" while its video decoder stands
@@ -1611,6 +1725,7 @@ enyo.kind({
 						return;  // pictures are being made
 					}
 					JF.log("the video decoder has not moved in " + (JF.DECODER_WAIT / 1000) + " s (count " + after + ")");
+					if (self.tryNetworkTranscode()) return;
 					if (!self.triedAgain) {
 						self.triedAgain = true;
 						var from = self.startTicks;

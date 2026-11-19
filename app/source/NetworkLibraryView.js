@@ -66,12 +66,14 @@ enyo.kind({
 	},
 
 	renderEntries: function(entries) {
+		this.listedEntries = entries;
 		this.$.entries.destroyControls();
 		for (var i = 0; i < entries.length; i++) {
 			var entry = entries[i];
 			if (!entry || typeof entry.name !== "string" || !entry.name) {
 				continue;
 			}
+			if (!entry.directory && /\.(srt|ass|ssa|vtt)$/i.test(entry.name)) continue;
 			this.$.entries.createComponent({kind: "Item", entry: entry, onclick: "entryClick", owner: this,
 				layoutKind: "HFlexLayout", align: "center", components: [
 					{content: entry.name, flex: 1},
@@ -90,7 +92,7 @@ enyo.kind({
 			this.path.push(entry.name);
 			this.load();
 		} else if (entry.playable) {
-			this.doPlayNetworkFile(this.source, (this.path || []).concat([entry.name]));
+			this.doPlayNetworkFile(this.source, (this.path || []).concat([entry.name]), this.listedEntries);
 		}
 	},
 
