@@ -21,6 +21,10 @@ enyo.kind({
 	],
 
 	needed: function(url) {
+		// Under Lunacy the WebView's player reaches https servers itself.
+		if (JF.lunacy && /^https:/i.test(url || "")) {
+			return false;
+		}
 		// Keep account credentials and LAN bridge capabilities out of media logs.
 		return /^https?:/i.test(url || "") && !/^http:\/\/127\.0\.0\.1(?::|\/)/i.test(url || "");
 	},

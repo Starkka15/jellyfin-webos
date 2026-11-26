@@ -926,7 +926,17 @@ enyo.kind({
 		if (!window.PalmSystem) {
 			return;
 		}
-		enyo.setAllowedOrientation(on ? (window.PalmSystem.videoOrientation || "up") : (JF.phone ? "up" : "free"));
+		enyo.setAllowedOrientation(on ? this.videoOrientation() : (JF.phone ? "up" : "free"));
+	},
+
+	// The way round video plays. Lunacy has no videoOrientation, and "up" there is
+	// the TouchPad's portrait, as on a device; Lunacy takes "landscape" for either
+	// landscape way round, so a video fills the screen however it is held.
+	videoOrientation: function() {
+		if (JF.lunacy) {
+			return "landscape";
+		}
+		return window.PalmSystem.videoOrientation || "up";
 	},
 
 	// ---- the controls over the picture -------------------------------------

@@ -9,6 +9,12 @@ var JF = window.JF || {};
 JF.CLIENT = "Jellyfin for webOS";
 JF.VERSION = "0.2.0";
 
+// Running under Lunacy (webOS apps on Android) rather than on webOS itself. Lunacy
+// gives pages the TouchPad's user agent, so this is told by its bridge object. There
+// the video plays in Android's WebView: it reaches https servers itself (no relay),
+// can't open MPEG-TS, and its screen's natural way round is landscape.
+JF.lunacy = !!window.LunacyNative;
+
 JF.log = function(msg) {
 	console.log("[jellyfin] " + msg);
 };
@@ -747,7 +753,9 @@ JF.api = {
 				// wall. A plain TS stream decoded steadily at the film's frame rate.
 				// CopyTimestamps: without it the server decodes a film with text
 				// subtitles from its beginning before sending anything.
-				{Container: "ts", Type: "Video", VideoCodec: "h264", AudioCodec: "aac", Protocol: "http",
+				// Lunacy's WebView can't open MPEG-TS ("DEMUXER_ERROR_COULD_NOT_OPEN",
+				// error 4); there the server sends fragmented MP4, a single stream as well.
+				{Container: JF.lunacy ? "mp4" : "ts", Type: "Video", VideoCodec: "h264", AudioCodec: "aac", Protocol: "http",
 					Context: "Streaming", MaxAudioChannels: "2", CopyTimestamps: true}
 			],
 			CodecProfiles: [
